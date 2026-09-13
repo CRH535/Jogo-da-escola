@@ -1,0 +1,64 @@
+import { expect, test } from '@playwright/test';
+import { PNG } from 'pngjs';
+
+test('npm start serves the compiled frontend and API without Vite', async ({ page, request }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+  const response = await page.goto('/');
+  expect(response?.status()).toBe(200);
+  expect(await response!.text()).not.toContain('/@vite/client');
+  await expect(page.getByRole('heading', { name: 'NEON STRIKE', exact: true })).toBeVisible();
+  await expect(page.getByText('Servidor online', { exact: true })).toBeVisible();
+  await expect(page.getByText('Renderização ativa', { exact: true })).toBeVisible();
+  await expect(page.locator('canvas')).toHaveCount(1);
+  await page.getByRole('button', { name: 'CONFIGURAÇÕES', exact: true }).click();
+  await expect(page.getByRole('tab', { name: 'VÍDEO', exact: true })).toBeVisible();
+  await page.getByLabel('Qualidade', { exact: true }).selectOption('low');
+  await page.reload();
+  await expect(page.getByLabel('Qualidade', { exact: true })).toHaveValue('low');
+  await page.getByRole('button', { name: 'Voltar ao menu', exact: true }).click();
+  await expect(page.getByRole('navigation', { name: 'Menu principal' })).toBeVisible();
+  await page.getByRole('button', { name: 'JOGAR', exact: true }).click();
+  await page.getByRole('button', { name: 'VER MAPA' }).click();
+  await expect(page.getByText('Mapa carregado', { exact: true })).toBeVisible({ timeout: 20000 });
+  await expect(page.getByLabel('Colisores', { exact: true })).toHaveCount(0);
+  await expect(page.locator('canvas')).toHaveCount(1);
+  await page.getByLabel('Vista', { exact: true }).selectOption('spawn-08');
+  await page.reload();
+  await expect(page.getByText('Mapa carregado', { exact: true })).toBeVisible({ timeout: 20000 });
+  await page.getByRole('button', { name: 'Voltar a JOGAR' }).click();
+  await expect(page.getByText('Renderização ativa')).toBeVisible();
+  const health = await request.get('/api/health');
+  expect(health.status()).toBe(200);
+  expect(await health.json()).toMatchObject({ status: 'ok', service: 'neon-strike-server' });
+  const missing = await request.get('/api/unknown');
+  expect(missing.status()).toBe(404);
+  expect(errors).toEqual([]);
+});
+
+test('compiled exploration loads, captures the mouse and moves without development tools', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+  await page.goto('/#arena');
+  await expect(page.getByRole('button', { name: 'ENTRAR NA ARENA' })).toBeVisible({ timeout: 20000 });
+  await expect(page.getByLabel('Debug do jogador')).toHaveCount(0);
+  await page.getByRole('button', { name: 'ENTRAR NA ARENA' }).click();
+  await expect.poll(() => page.evaluate(() => document.pointerLockElement?.tagName)).toBe('CANVAS');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const first = PNG.sync.read(await page.screenshot());
+  await page.keyboard.down('w');
+  await expect.poll(async () => {
+    const next = PNG.sync.read(await page.screenshot());
+    let changed = 0;
+    for (let i = 0; i < first.data.length; i += 4) if (Math.abs(first.data[i]! - next.data[i]!) > 15) changed++;
+    return changed;
+  }).toBeGreaterThan(2000);
+  await page.keyboard.up('w'); await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'CONTINUAR', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'VOLTAR AO MENU' }).click();
+  await expect(page.getByText('Renderização ativa')).toBeVisible();
+  await expect(page.locator('canvas')).toHaveCount(1);
+  expect(errors).toEqual([]);
+});

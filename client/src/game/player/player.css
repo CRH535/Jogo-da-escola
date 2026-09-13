@@ -1,0 +1,25 @@
+.fps-screen { position: relative; min-height: 100svh; isolation: isolate; }
+.fps-viewport { position: fixed; inset: 0; }
+.fps-viewport canvas { display: block; width: 100%; height: 100%; }
+.fps-chrome { position: fixed; inset: 0; pointer-events: none; transform: translateZ(0); z-index: 1; }
+.fps-location { position: absolute; top: 20px; left: 24px; right: 24px; display: flex; justify-content: space-between; gap: 16px; color: #effff8; font: 11px monospace; text-shadow: 0 1px 3px #000; }
+.fps-location > span:last-child { color: #a3f7da; text-align: right; }
+.fps-reticle { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; background: #effff6; border-radius: 50%; box-shadow: 0 0 2px 1px #1e2624; }
+.fps-overlay { width: min(390px, calc(100% - 32px)); max-height: calc(100svh - 32px); margin: auto; padding: 28px; color: #eff8f5; background: #101918f5; border: 1px solid #435b50; border-radius: 4px; overflow-y: auto; }
+.fps-overlay::backdrop { background: #07101066; }
+.fps-overlay h2 { font-size: 26px; line-height: 1.2; overflow-wrap: anywhere; }
+.fps-actions { display: grid; gap: 10px; margin-top: 28px; }
+.fps-actions .button { width: 100%; }
+.fps-notice { color: var(--coral); font-size: 13px; line-height: 1.6; margin-top: 20px; }
+.fps-debug-toggle { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); margin-top: 20px; }
+.fps-debug-toggle input { accent-color: var(--mint); width: 17px; height: 17px; }
+.fps-debug { position: absolute; left: 24px; bottom: 20px; max-width: calc(100% - 48px); display: grid; gap: 5px; padding: 10px 12px; background: #101918e8; color: #f4d985; font: 11px/1.4 monospace; overflow-wrap: anywhere; }
+.fps-settings { width: min(1040px, calc(100% - 32px)); padding: 0; }
+.match-summary .arena-open { margin-top: 10px; }
+@media (max-width: 600px) {
+  .fps-location { left: 16px; right: 16px; font-size: 10px; }
+  .fps-overlay { padding: 24px; }
+  .fps-overlay h2 { font-size: 23px; }
+  .fps-settings { padding: 0; }
+  .fps-debug { left: 16px; max-width: calc(100% - 32px); }
+}

@@ -1,0 +1,31 @@
+{
+  "name": "neon-strike",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": ["client", "server", "shared"],
+  "engines": { "node": ">=24 <25", "npm": ">=11" },
+  "scripts": {
+    "dev": "npm run build:shared && concurrently --kill-others --names shared,server,client \"npm run dev -w @neon-strike/shared\" \"npm run dev -w @neon-strike/server\" \"npm run dev -w @neon-strike/client\"",
+    "dev:client": "npm run build:shared && npm run dev -w @neon-strike/client",
+    "dev:server": "npm run build:shared && npm run dev -w @neon-strike/server",
+    "build:shared": "npm run build -w @neon-strike/shared",
+    "build:server": "npm run build:shared && npm run build -w @neon-strike/server",
+    "build": "npm run build:server && npm run build -w @neon-strike/client",
+    "typecheck": "npm run build:shared && npm run typecheck --workspaces",
+    "pretest": "npm run build:server",
+    "test": "node --test server/test/*.test.mjs shared/test/*.test.mjs",
+    "test:e2e": "playwright test",
+    "test:build": "npm run build && playwright test --config playwright.build.config.ts",
+    "check": "npm run build && node --test server/test/*.test.mjs shared/test/*.test.mjs",
+    "start": "npm run start -w @neon-strike/server"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/node": "^24.0.0",
+    "@types/pngjs": "6.0.5",
+    "concurrently": "10.0.5",
+    "pngjs": "7.0.0",
+    "typescript": "5.9.3"
+  }
+}

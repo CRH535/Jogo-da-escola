@@ -1,0 +1,36 @@
+{
+  "name": "@neon-strike/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./maps": {
+      "types": "./dist/maps/index.d.ts",
+      "default": "./dist/maps/index.js"
+    },
+    "./physics": {
+      "types": "./dist/physics/createMapWorld.d.ts",
+      "default": "./dist/physics/createMapWorld.js"
+    },
+    "./gameplay": {
+      "types": "./dist/gameplay/index.d.ts",
+      "default": "./dist/gameplay/index.js"
+    },
+    "./simulation": {
+      "types": "./dist/simulation/index.d.ts",
+      "default": "./dist/simulation/index.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsc --watch --preserveWatchOutput",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@dimforge/rapier3d-compat": "^0.12.0"
+  }
+}
