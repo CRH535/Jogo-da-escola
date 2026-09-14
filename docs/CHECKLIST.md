@@ -2,7 +2,7 @@
 
 Uma etapa so recebe [x] depois da implementacao, execucao, testes e registro dos
 arquivos e limitacoes. A prioridade e jogabilidade, colisao e performance.
-Escopo atual autorizado: Etapa 4. Nao iniciar a Etapa 5 neste turno.
+Escopo atual autorizado: Etapa 8. Nao iniciar a Etapa 9 neste turno.
 
 - [x] 1. Fundacao: workspaces, dependencias, Vite/React/Three, Node/Express,
   scripts, health via proxy, build, teste de navegador e documentacao inicial.
@@ -13,11 +13,11 @@ Escopo atual autorizado: Etapa 4. Nao iniciar a Etapa 5 neste turno.
   colliders, spawns e luz; validar limites e passagens antes do acabamento.
 - [x] 4. Jogador: Pointer Lock, WASD/mouse, aceleracao, desaceleracao, corrida,
   gravidade e pulo; testar quinas, rampas, teto, queda, alt-tab e FPS variados.
-- [ ] 5. Gameplay: NX-7 Pulse primeiro, depois VX Scatter e ARC-9; cooldown,
+- [x] 5. Gameplay: NX-7 Pulse primeiro, depois VX Scatter e ARC-9; cooldown,
   municao, recarga, alvos, 100 HP, dano, eliminacao digital e respawn em 3 s.
-- [ ] 6. HUD: vida, municao, equipamento, mira, hit marker, feedback de dano,
+- [x] 6. HUD: vida, municao, equipamento, mira, hit marker, feedback de dano,
   jogadores, cronometro, feed temporario e placar TAB ordenado.
-- [ ] 7. Bots: navegacao primeiro, deteccao depois, combate depois;
+- [x] 7. Bots: navegacao primeiro, deteccao depois, combate depois;
   PATROL/SEARCH/CHASE/ATTACK/RESPAWN, perda de alvo, 1-7 bots, tres dificuldades.
 - [ ] 8. Partidas: FFA, countdown 3/2/1/GO com input bloqueado, 10 min ou
   30 eliminacoes, +100 por eliminacao, pausa offline, resultados e reinicio.

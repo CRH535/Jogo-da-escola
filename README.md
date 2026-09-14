@@ -3,14 +3,15 @@
 FPS de arena futurista para navegador desktop, com partidas rapidas e efeitos
 digitais sem violencia grafica. Projeto em desenvolvimento incremental.
 
-**Estado atual: Etapa 4 - controlador FPS.** JOGAR > EXPLORAR ARENA abre a
-NEON FACILITY em primeira pessoa, com mouse, WASD, corrida, pulo e colisoes.
-Menus, inspecao do mapa, preferencias e backend HTTP foram preservados.
-Ainda nao ha combate, armas, vida, bots, placar, lobby ou multiplayer.
+**Estado atual: Etapa 8 - partidas locais FFA.** JOGAR inicia partida com 1-7 bots,
+tres dificuldades, tres equipamentos, eliminacoes, respawn, feed e placar.
+TREINAMENTO com hologramas, exploracao livre, mapa, menus e backend preservados.
+Contagem inicial, limite de dez minutos/30 eliminacoes, resultado e revanche.
+Lobby e multiplayer ainda nao implementados.
 
 JOGAR, MULTIPLAYER, TREINAMENTO, CONFIGURACOES, CREDITOS e SAIR abrem suas telas.
-O menu JOGAR salva nome, mapa, 1-7 bots e dificuldade. Botoes de iniciar partida,
-treinamento e criar/entrar em salas ficam desabilitados ate as etapas correspondentes.
+O menu JOGAR salva nome, mapa, 1-7 bots e dificuldade e inicia a arena local.
+Criar/entrar em salas continuam desabilitados ate as etapas de multiplayer.
 
 ## Requisitos e instalacao
 
@@ -43,7 +44,7 @@ Variaveis do terminal tem precedencia. Nao ha segredos ou credenciais requeridos
 | `npm run dev:server` | Compila shared e inicia apenas Express |
 | `npm run typecheck` | Verifica TypeScript nos tres pacotes |
 | `npm run build` | Compila shared/server e gera client/dist |
-| `npm run check` | Build e testes HTTP/configuracao/contrato/mapa/fisica |
+| `npm run check` | Build e testes HTTP/contrato/mapa/movimento/gameplay/HUD/bots |
 | `npm test` | Compila servidor/shared e executa testes do Node |
 | `npm run test:e2e` | Testes de navegador com servidores isolados em 5180/3100 |
 | `npm run test:build` | Build e teste do frontend/API pelo Express na porta isolada 3101 |
@@ -83,7 +84,75 @@ O controlador real possui testes de aceleracao, frenagem, velocidade diagonal,
 gravidade, pulo unico, teto, quinas, rampas, plataformas e movimento equivalente
 em 30/60/120/144 FPS. Playwright exercita Pointer Lock real, teclado/mouse,
 pausa, configuracoes, reinicio, recusa de captura, perda de foco/contexto e saida.
-Isso nao constitui benchmark de GPU nem teste de combate ou gameplay touch.
+O treinamento acrescenta testes de cadencia, municao, dano por raycast,
+oclusao por paredes, alvos, vida, morte e respawn. Chrome valida os tres
+equipamentos, mira, pausa de recarga/respawn, reinicio, audio/mute e descarte
+de contextos em entradas repetidas. O HUD tem testes de pontos, derrotas, tempo,
+feed limitado/expiracao, ordenacao, TAB durante morte/respawn e nomes longos.
+Uma fixture exclusiva de testes verifica oito linhas do placar, sem simular
+conexoes na aplicacao. O build compilado tambem exercita combate e HUD.
+Etapa 6 validada com 147 testes: 84 Node, 59 navegador e 4 build.
+Etapa 7 acrescenta testes de navegacao com capsulas reais entre todos os spawns,
+patrulha prolongada, percepcao/oclusao, memoria, reacao, combate e respawn dos bots.
+Validacoes anteriores estao no [registro da Etapa 7](docs/STAGE-7.md).
+Etapa 7 validada com 173 testes: 99 Node, 69 navegador e cinco build.
+Etapa 8 acrescenta testes de contagem, limites exatos, resultados imutaveis,
+precisao, bloqueio de acoes, pausa, revanche e fim com TAB aberto.
+Resultados novos estao no [registro da Etapa 8](docs/STAGE-8.md).
+Isso nao constitui benchmark de GPU, teste multiplayer ou gameplay touch.
+
+## Jogar o treinamento (Etapa 5)
+
+1. Abra http://localhost:5173 > TREINAMENTO > INICIAR TREINAMENTO.
+2. Clique em ENTRAR NA ARENA. O primeiro alvo esta alinhado com a mira.
+3. Clique esquerdo dispara; R recarrega; 1, 2 e 3 selecionam equipamentos.
+4. Os quatro hologramas possuem 100 HP. Ao eliminar um alvo, ele se dissolve
+   em particulas digitais e retorna depois de 3 segundos de simulacao.
+5. O circulo coral no CORE, rotulado CAMPO INSTAVEL / DANO, causa 25 HP a
+   cada 0.5 s de exposicao. Entre nele para testar dano e eliminacao do jogador.
+6. Ao chegar a zero HP, comandos de combate/movimento ficam bloqueados e
+   aparece RESPAWN EM 3, 2, 1. O jogador retorna ao SPAWN 08, fora do campo,
+   com 100 HP e os equipamentos reabastecidos. Nao ha adversarios nesta etapa.
+7. ESC pausa toda a simulacao, inclusive recarga e respawn. REINICIAR restaura
+   jogador, alvos e municao; VOLTAR AO MENU libera a sessao e seus recursos.
+
+| Equipamento | Seletor | Carga / reserva | Cadencia | Recarga | Perfil ficticio |
+| --- | --- | --- | --- | --- | --- |
+| NX-7 Pulse | 1 | 30 / 150 | Automatico, 7.5/s | 1.4 s | 20 de dano proximo, alcance 55 m |
+| VX Scatter | 2 | 6 / 36 | Um clique, intervalo 0.8 s | 1.8 s | 8 pulsos dispersos, queda forte de dano, 22 m |
+| ARC-9 | 3 | 5 / 25 | Um clique, intervalo 0.9 s | 1.7 s | 80 de dano proximo, precisao alta, 90 m |
+
+Somente ARC-9 tem mira secundaria: segure o botao direito para aproximar.
+O alcance e a dispersao pertencem apenas as regras ficticias deste jogo.
+Paredes e coberturas bloqueiam disparos; hologramas nao bloqueiam movimento.
+Trocar equipamento cancela a recarga sem conceder municao e nao elimina o
+cooldown restante. Reserva e finita; reiniciar a sessao ou respawn reabastece.
+
+## HUD e placar (Etapa 6)
+
+- Vida, carga/reserva, equipamento, mira, acerto, dano e respawn continuam
+  ligados ao combate real. Recarga tem barra de progresso; vida e municao
+  baixas recebem destaque, sem piscadas ou efeitos fortes.
+- O topo mostra pontos, TEMPO DE TREINO e quantidade real de jogadores.
+  Cada alvo eliminado vale 100 pontos locais; morrer acrescenta uma derrota
+  sem apagar os pontos. Alvos holograficos nao entram na lista de jogadores.
+- Segure TAB para abrir o placar; solte para fechar. Exibe JOGADOR,
+  ELIMINACOES, DERROTAS, PONTUACAO e PING, ordenado por pontuacao decrescente.
+  Empates usam mais eliminacoes, menos derrotas e ID estavel.
+- O treinamento tem um unico jogador e mostra LOCAL no lugar de ping.
+  Nao sao simuladas conexoes nem preenchidas linhas com bots inexistentes.
+- O feed registra jogador > alvo e Campo de energia > jogador. Eventos duram
+  5 segundos de simulacao; armazena no maximo 4, exibindo os 2 mais recentes
+  em telas de ate 600 px. A pontuacao nao desaparece ao expirar um evento.
+- TAB nao pausa, nao libera Pointer Lock e funciona durante morte/respawn.
+  ESC ou perda de foco fecha o placar e pausa. Nos menus, TAB navega normalmente.
+- Pausa congela cronometro e expiracao do feed. Respawn conserva estatisticas;
+  REINICIAR e uma nova entrada zeram tempo, pontuacao, derrotas e feed.
+
+O treinamento e livre: o cronometro mostra tempo **decorrido**, nao uma falsa
+contagem regressiva de partida. O contrato visual suporta tempo restante para
+a integracao com partidas. JOGAR usa tempo restante, limite de 10 minutos/30
+eliminacoes e resultados; o treinamento continua separado dessas regras.
 
 ## Explorar em primeira pessoa (Etapa 4)
 
@@ -102,13 +171,15 @@ O jogador usa uma capsula de 1.8 m de altura e raio 0.35 m, sem modelo visivel.
 Perda de foco ou aba oculta limpa as teclas e pausa. Retornar a aba nao retoma
 sozinho: clique em CONTINUAR. Falhas de Pointer Lock sao informadas, sem ativar
 movimento antes da captura. Navegador desktop com mouse e teclado e necessario;
-nao foram adicionados controles touch. O pequeno ponto central e so referencia
-visual, ainda nao ha equipamento ou disparo.
+nao foram adicionados controles touch. EXPLORAR ARENA continua sem equipamento
+ou dano; para combate local, selecione JOGAR (bots) ou TREINAMENTO (hologramas).
 
 No modo dev, Debug do jogador exibe FPS amostrado, XYZ, velocidade, estado de
 chao/ar, FOV, camera, draw calls, geometrias e recuperacoes de queda. Atualiza
 no maximo quatro vezes por segundo durante a cena, mais as transicoes de controle.
 Esse controle e seus dados nao aparecem no build de producao.
+Na sessao contra bots, o diagnostico tambem inclui quantidade, poses e estados
+da IA. Ele fica acima dos indicadores de vida/municao e e ocultado pelo placar.
 
 ## Inspecionar o mapa (Etapa 3)
 
@@ -128,7 +199,8 @@ Faixas, nomes dos setores e marcadores sao decorativos e nao bloqueiam movimento
 
 A camera de VER MAPA continua sendo de inspecao: nao usa WASD ou Pointer Lock.
 EXPLORAR ARENA usa o controlador FPS da Etapa 4 e os mesmos colisores. Os spawns
-estao livres de geometria, mas selecao segura em relacao a adversarios vem no respawn.
+estao livres de geometria. A sessao contra bots usa esses pontos na selecao
+por distancia e visibilidade descrita na secao da Etapa 7.
 
 ## Configuracoes
 
@@ -148,10 +220,13 @@ Sombras agora afetam o mapa: uma luz direcional com shadow map 1024 x 1024,
 desativada na qualidade Baixa ou ao desligar Sombras. A iluminacao e estatica.
 FOV, sensibilidade e head bob agora afetam a camera FPS. O head bob e discreto,
 somente ao andar/correr no chao, e tambem respeita prefers-reduced-motion.
-Volumes permanecem preparados para o futuro sistema de audio. A camera de
-inspecao tem enquadramento proprio, independente do FOV FPS.
-O tutorial esta agendado para a primeira partida; a tela de tutorial sera
-implementada junto ao fluxo jogavel. Nao ha remapeamento de teclas nesta etapa.
+Volume geral e Efeitos controlam os sons sinteticos provisorios do combate local:
+disparo, recarga, acerto, dano, eliminacao e respawn. O audio so e ativado
+por gesto do jogador; se indisponivel, o combate continua silenciosamente.
+Musica, Interface e Passos ficam salvos, mas ainda nao possuem fontes sonoras.
+A camera de inspecao tem enquadramento proprio, independente do FOV FPS.
+A preferencia do tutorial permanece salva; a tela automatica de tutorial ainda
+e pendente para o polimento. Nao ha remapeamento de teclas nesta etapa.
 
 Preferencias usam `neon-strike:preferences:v1` no localStorage, sem dados sensiveis.
 Cada origem/porta do navegador possui seu armazenamento: 5173 e 3000 nao
@@ -161,7 +236,8 @@ Restaurar padroes pede confirmacao e mantem nome do jogador, mapa, bots e dificu
 
 ## Acesso pela rede local agora
 
-Este procedimento entrega menus e exploracao local; jogadores nao sao sincronizados.
+Este procedimento entrega menus, exploracao, treinamento e bots locais;
+cada navegador possui sua propria sessao. Jogadores nao sao sincronizados.
 
 ### Host em desenvolvimento
 
@@ -206,20 +282,72 @@ Socket.IO usara a porta TCP do servidor, sem uma porta UDP adicional.
 Salas, estados de pronto, combate e reconexao ainda nao existem nesta versao.
 O guia sera atualizado com o fluxo efetivamente validado quando forem implementados.
 
-## Combate offline planejado
+## Jogar contra bots (Etapa 7)
 
-Na etapa jogavel: JOGAR > PARTIDA CONTRA BOTS > NEON FACILITY, escolher 1-7 bots,
-dificuldade Facil/Normal/Dificil e INICIAR PARTIDA. Treinamento tera alvos locais.
-O modo offline rodara a simulacao local, independentemente do servidor de partida.
-Atualmente essa configuracao pode ser salva no menu, mas iniciar esta bloqueado.
+1. Abra JOGAR e configure nome, NEON FACILITY, 1-7 bots e dificuldade.
+2. Clique em INICIAR PARTIDA; depois, ENTRAR NA ARENA para capturar o mouse.
+3. Todos contra todos: os bots enfrentam voce e os outros bots. Cada eliminacao
+   vale 100 pontos. Segure TAB para consultar o placar; BOT identifica IA, nao ping.
+4. Vida padrao de 100 HP, tres equipamentos com municao finita e recarga.
+   Bots comecam com NX-7 e usam o mesmo inventario; mudam equipamento se esgotado.
+5. Eliminacao digital e respawn em 3 s. A selecao de spawn prioriza distancia
+   e cobertura visual em relacao aos adversarios vivos, sem teleporte de navegacao.
+6. ESC pausa todos os atores, recarga, respawn e relogio. REINICIAR restaura
+   vida/municao, posicoes iniciais e todas as estatisticas. VOLTAR AO MENU encerra.
+
+| Dificuldade | Reacao minima | Movimento | Erro de mira adicional |
+| --- | --- | --- | --- |
+| Facil | 0.90 s | Mais lento, sem strafe de combate | Maior |
+| Normal | 0.50 s | Patrulha e deslocamento lateral | Moderado |
+| Dificil | 0.30 s | Mais rapido, deslocamento lateral | Menor, nunca perfeito |
+
+Bots usam A* sobre pontos com margem de colisao e apoio, gerados a partir do
+mapa fisico. Corredores e rampas conectam os setores. Paredes bloqueiam visao e
+disparos; ao perder um alvo, buscam sua ultima posicao vista por ate 3 s antes
+de patrulhar novamente. Percepcao a 10 Hz e revisao de destino a ate 2 Hz;
+fisica a 60 Hz. Nao ha perseguicao onisciente atraves das paredes.
+
+Desde a Etapa 8, JOGAR possui contagem inicial e final automatico; o HUD mostra
+TEMPO RESTANTE. Regras e resultados estao descritos abaixo.
+Treinamento conserva os quatro hologramas e o campo ambiental; esses elementos
+nao existem na sessao contra bots. O servidor HTTP nao simula os bots.
+
+## Partidas FFA (Etapa 8)
+
+1. Depois de ENTRAR NA ARENA, aguarde 3, 2, 1, GO! Movimento, combate e IA
+   ficam bloqueados por tres segundos. Olhar e consultar TAB continuam possiveis.
+   Acoes pressionadas durante a contagem nao ficam enfileiradas para o inicio.
+2. A partida termina quando alguem atinge 30 eliminacoes ou depois de dez
+   minutos de simulacao ativa, o que ocorrer primeiro. Cada eliminacao vale 100.
+3. ESC/perda de foco pausa tambem a contagem inicial, tempo, IA e respawns.
+   CONTINUAR retoma do mesmo ponto; REINICIAR zera a partida e repete a contagem.
+4. Ao terminar, o mouse e liberado e toda simulacao de combate e congelada.
+   VITORIA/DERROTA mostra posicao, eliminacoes, derrotas, pontuacao, precisao,
+   tempo da partida e o placar de todos os participantes.
+5. JOGAR NOVAMENTE reutiliza mapa/bots/dificuldade com todos os estados zerados.
+   MENU PRINCIPAL encerra a sessao e libera os recursos. Nao ha botao de lobby
+   porque o lobby ainda nao existe.
+
+Desempate: pontuacao, eliminacoes, menos derrotas e ID estavel, nessa ordem,
+igual ao TAB. Isso tambem decide partidas sem eliminacoes; nao ha prorrogacao.
+Se a ultima eliminacao ocorrer no tick do limite de tempo, o motivo registrado
+e o limite de eliminacoes. O resultado nao muda depois do encerramento.
+Precisao e a porcentagem de projeteis que causaram dano em adversarios; cada
+pulso do VX Scatter conta separadamente. Sem disparos, exibe 0%.
+
+Testes de regras verificam os 36000 ticks reais do limite padrao. Para testar
+o ciclo completo no navegador sem esperar dez minutos por caso, uma entrada
+isolada em `tests/fixtures/match.html` usa a mesma cena/simulacao com limites
+curtos. Ela nao e importada pela aplicacao nem incluida no build. Nenhuma URL
+ou preferencia da aplicacao permite alterar os limites de producao.
 
 | Acao | Controle |
 | --- | --- |
 | Mover / olhar | WASD / mouse |
 | Pular / correr | Espaco / Shift |
-| Disparar / mira secundaria (futuro) | Clique esquerdo / direito |
-| Recarregar / equipamento (futuro) | R / 1, 2, 3 |
-| Placar (futuro) / pausa atual | TAB / ESC |
+| Disparar / mira secundaria ARC-9 | Clique esquerdo / direito |
+| Recarregar / equipamento | R / 1, 2, 3 |
+| Placar / pausa | Segurar TAB / ESC |
 
 ## Organizacao
 
@@ -233,9 +361,22 @@ persistencia e fullscreen. A navegacao fica em `app` e HTTP em `network`.
 `shared/src/physics` instancia os colisores com Rapier. `shared/src/simulation`
 contem movimento e passo fixo, sem DOM/Three. `client/src/game/player` contem
 InputManager, camera e executor local. Dados, fisica e simulacao usam subpaths
-separados; o motor so carrega ao abrir a inspecao ou a exploracao.
+separados; o motor so carrega ao abrir inspecao, exploracao, treinamento ou bots.
+`shared/src/gameplay` contem catalogo, inventario, vida, layout dos alvos e
+executor local de treinamento, sem Three/DOM. `client/src/game/combat` adapta
+eventos para modelos 3D e pools; `client/src/audio` controla sons sinteticos.
+`CombatReadout` recebe snapshots limitados a 10 Hz, sem simular combate no React.
+`client/src/ui/hud` separa resumo, feed e tabela. `TrainingStats` conserva tempo,
+estatisticas e eventos limitados na simulacao. `@neon-strike/shared/hud` exporta
+tipos, ordenacao e formatacao sem importar o motor fisico para o menu.
+`shared/src/bots` contem navegacao, percepcao, estados, respawn e sessao FFA local.
+O adaptador de combate tambem renderiza bots e compartilha audio/efeitos/HUD,
+sem misturar a IA com componentes React. Geometrias/materiais sao reutilizados.
+`shared/src/match` organiza regras FFA, relogios e resultado imutavel sem DOM,
+Three ou Rapier. `BotSession` aplica a politica quando configurada; o executor
+da aplicacao sempre usa FFA padrao. `client/src/ui/match` exibe o resultado.
 `docs` registra arquitetura e criterios das 14 etapas. `tests/browser` valida a
-interface e o mapa; `server/test` cobre HTTP e `shared/test` cobre mapa/fisica/movimento.
+interface e cenas; `server/test` cobre HTTP e `shared/test` cobre mapa/fisica/movimento/gameplay.
 
 - [Arquitetura, dependencias e riscos](docs/ARCHITECTURE.md)
 - [Checklist das etapas e do MVP](docs/CHECKLIST.md)
@@ -243,20 +384,38 @@ interface e o mapa; `server/test` cobre HTTP e `shared/test` cobre mapa/fisica/m
 - [Registro da Etapa 2](docs/STAGE-2.md)
 - [Registro da Etapa 3](docs/STAGE-3.md)
 - [Registro da Etapa 4](docs/STAGE-4.md)
+- [Registro da Etapa 5](docs/STAGE-5.md)
+- [Registro da Etapa 6](docs/STAGE-6.md)
+- [Registro da Etapa 7](docs/STAGE-7.md)
+- [Registro da Etapa 8](docs/STAGE-8.md)
 
 ## Problemas conhecidos
 
-- Ja e possivel explorar em primeira pessoa, mas nao disputar partidas.
-  Nao foram iniciadas as Etapas 5-14.
+- Partidas locais FFA funcionam; multiplayer e as Etapas 9-14 ainda estao pendentes.
+  Alvos estaticos do treinamento nao sao bots e o treinamento nao termina sozinho.
+- O spawn fixo do treinamento foi preservado. Contra bots, o spawn e escolhido
+  por distancia/visibilidade, mas uma arena ocupada pode nao oferecer cobertura
+  completa. Nao existe invulnerabilidade artificial de respawn.
+- Navegacao atual pressupoe uma superficie caminhavel por coordenada XZ e foi
+  validada em NEON FACILITY; mapas futuros com pontes/sobreposicoes exigem navmesh.
+  IA e inicial: sem salto tatico, retirada, coordenacao ou aprendizado.
+- Modelos e audio dos bots sao provisorios. Sons proximos usam o sintetizador
+  atual, ainda sem audio 3D espacial ou sons de passos.
+- Equipamentos, efeitos e sons sao provisorios. Tutorial automatico, agachamento,
+  remapeamento e tratamento visual refinado de equipamento junto as paredes
+  permanecem pendentes; os controles estao no README e em CONFIGURACOES.
 - GPU sem WebGL 2 exige hardware/navegador compativel; ha mensagem de fallback.
 - Se o contexto grafico se perder, recarregue a pagina para reinicializar.
+- Apos muitas entradas/saidas rapidas, o navegador pode limitar novas capturas
+  do mouse. A mensagem informa a recusa: aguarde alguns segundos e clique
+  novamente em ENTRAR NA ARENA ou CONTINUAR. Nao ha recaptura automatica.
 - Servidor desligado nao impede a cena; status e reavaliado a cada 5 segundos.
 - Portas ocupadas causam erro explicito. O processo nao encerra programas alheios
   nem troca silenciosamente a porta. Configure SERVER_PORT/CLIENT_PORT na raiz.
   Se definir API_PROXY_TARGET, ajuste-o tambem ao mudar a porta do backend.
 - O build servido pelo Express so se atualiza apos novo `npm run build`.
 - Interface, Three.js, visualizador, controlador e fisica carregam em bundles
-  separados. O motor Three.js tem aproximadamente 538 kB / 134 kB gzip;
+  separados. O motor Three.js tem aproximadamente 550 kB / 137 kB gzip;
   Rapier com WASM, aproximadamente 2048 kB / 762 kB gzip.
   A fisica nao e baixada no menu; a primeira abertura do mapa pode levar mais
   tempo e mostra CARREGANDO MAPA. O Vite avisa sobre os chunks acima de 500 kB.
@@ -268,7 +427,7 @@ interface e o mapa; `server/test` cobre HTTP e `shared/test` cobre mapa/fisica/m
 
 Projeto independente desenvolvido com tecnologias web. A geometria inicial e
 criada no codigo; nao usa modelos ou audio de terceiros. Icones usam Lucide
-(ISC). Nao ha audio nesta etapa. Licencas das dependencias e ferramentas estao em
+(ISC). Audio sintetico original e provisorio via Web Audio API. Licencas estao em
 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md); os textos originais acompanham
 os respectivos pacotes em node_modules. Nenhuma licenca do codigo autoral do
 projeto foi escolhida em nome do autor.

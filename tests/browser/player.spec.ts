@@ -114,6 +114,7 @@ test('blur while a key is held pauses and resume requires a new movement keydown
   const z = await value(page, 'z');
   await page.keyboard.up('w');
   await enter(page, 'CONTINUAR');
+  await page.evaluate(() => window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW', repeat: true })));
   await page.waitForTimeout(500);
   expect(await value(page, 'z')).toBeCloseTo(z, 2);
   expect(await value(page, 'speed')).toBe(0);

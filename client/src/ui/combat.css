@@ -1,0 +1,22 @@
+.combat-bottom { position: absolute; inset: auto 24px 20px; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; font-family: monospace; text-shadow: 0 2px 4px #000; }
+.combat-bottom > div { display: grid; gap: 5px; min-width: 110px; }
+.combat-bottom span { font-size: 11px; color: #dbfff1; }
+.combat-bottom strong { font-size: 32px; line-height: 1.1; font-variant-numeric: tabular-nums; color: #f2fff9; }
+.combat-bottom small { font-size: 14px; font-weight: 400; color: #d5e6df; }
+.combat-health meter { width: 110px; height: 8px; accent-color: #a4f4ce; }
+.combat-weapon { text-align: right; }
+.combat-bottom .combat-reload { color: #f7d787; min-height: 14px; }
+.combat-reload-track { height: 4px; }
+.combat-reload-track progress { display: block; width: 100%; height: 4px; accent-color: #f3d786; border: 0; }
+.combat-bottom [data-low="true"] strong { color: #ffb09a; }
+.combat-hit { position: absolute; left: 50%; top: 50%; width: 20px; height: 20px; margin: -10px; border: 2px solid #acffe1; transform: rotate(45deg); clip-path: polygon(0 0, 35% 0, 35% 65%, 100% 65%, 100% 100%, 65% 100%, 65% 35%, 0 35%); }
+.combat-damage { position: absolute; inset: 0; border: 5px solid #ff9382a6; box-shadow: inset 0 0 50px #e774604a; }
+.combat-death { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; padding: 32px; text-align: center; background: #101918ba; color: #f2fff9; }
+.combat-death h2 { font-size: 26px; line-height: 1.25; overflow-wrap: anywhere; }
+.combat-death p { font: 14px monospace; color: #b9f3dc; }
+.fps-screen[data-training="true"] .fps-debug, .fps-screen[data-bots="true"] .fps-debug { bottom: 116px; }
+@media (max-width: 600px) {
+  .combat-bottom { left: 16px; right: 16px; bottom: 16px; }
+  .combat-bottom strong { font-size: 28px; }
+  .combat-death h2 { font-size: 22px; }
+}

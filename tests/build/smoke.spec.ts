@@ -1,6 +1,90 @@
 import { expect, test } from '@playwright/test';
 import { PNG } from 'pngjs';
 
+test('compiled bots run a real local arena with eight actors, combat, HUD and restart without debug tools', async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+  await page.goto('/?durationTicks=60&eliminationLimit=1#play'); await page.getByLabel('Número de bots').selectOption('7');
+  await page.getByLabel('Dificuldade').selectOption('easy');
+  await page.getByRole('button', { name: 'INICIAR PARTIDA', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'ENTRAR NA ARENA' })).toBeVisible({ timeout: 20000 });
+  await expect(page.getByLabel('Debug do jogador')).toHaveCount(0);
+  const entry = await page.getByRole('button', { name: 'ENTRAR NA ARENA' }).boundingBox();
+  await page.getByRole('button', { name: 'ENTRAR NA ARENA' }).click();
+  await expect.poll(() => page.evaluate(() => document.pointerLockElement?.tagName)).toBe('CANVAS');
+  await expect(page.getByLabel('Estado do combate')).toHaveAttribute('data-match-state', 'COUNTDOWN');
+  await expect(page.getByLabel('Tempo restante')).toHaveText('10:00');
+  await expect(page.getByLabel('Estado do combate')).toHaveAttribute('data-match-state', 'PLAYING');
+  await page.mouse.move(entry!.x + entry!.width / 2, entry!.y + entry!.height / 2 + 7);
+  await page.mouse.down(); await expect(page.getByLabel('Pontuação', { exact: true })).toHaveText('100'); await page.mouse.up();
+  await expect(page.getByLabel('Estado do combate')).toHaveAttribute('data-match-state', 'PLAYING');
+  await expect(page.getByLabel('Quantidade de jogadores')).toHaveText('8');
+  await expect(page.getByLabel('Feed de eliminações')).toContainText('BOT-07');
+  await page.keyboard.down('Tab');
+  const board = page.getByRole('region', { name: 'Placar', exact: true });
+  await expect(board.locator('tbody tr')).toHaveCount(8);
+  await expect(board.locator('[data-local="false"] .score-ping')).toHaveText(Array(7).fill('BOT'));
+  await page.screenshot({ path: testInfo.outputPath('compiled-bots.png') });
+  await page.keyboard.up('Tab'); await page.keyboard.press('Escape');
+  await page.getByRole('button', { name: 'REINICIAR', exact: true }).click();
+  await expect(page.getByLabel('Estado do combate')).toHaveAttribute('data-score', '0');
+  await expect(page.getByLabel('Estado do combate')).toHaveAttribute('data-hp', '100');
+  await page.keyboard.press('Escape'); await page.getByRole('button', { name: 'VOLTAR AO MENU' }).click();
+  await expect(page.getByText('Renderização ativa')).toBeVisible(); expect(errors).toEqual([]);
+});
+
+test('compiled HUD displays real score, feed, timer and a keyboard scoreboard without network placeholders', async ({ page }, testInfo) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+  await page.goto('/#range'); await expect(page.getByRole('button', { name: 'ENTRAR NA ARENA' })).toBeVisible({ timeout: 20000 });
+  await page.getByRole('button', { name: 'ENTRAR NA ARENA' }).click();
+  await expect.poll(() => page.evaluate(() => document.pointerLockElement?.tagName)).toBe('CANVAS');
+  await page.mouse.down(); await expect(page.getByLabel('Pontuação', { exact: true })).toHaveText('100'); await page.mouse.up();
+  await expect(page.getByLabel('Feed de eliminações')).toContainText('T-01');
+  await expect(page.getByLabel('Quantidade de jogadores')).toHaveText('1');
+  await expect(page.getByLabel('Tempo de treino')).not.toHaveText('00:00');
+  await page.keyboard.down('Tab');
+  const board = page.getByRole('region', { name: 'Placar', exact: true });
+  await expect(board).toBeVisible(); await expect(board.locator('tbody tr')).toHaveCount(1);
+  await expect(board.locator('tbody td')).toHaveText(['1', '0', '100', 'LOCAL']);
+  await page.screenshot({ path: testInfo.outputPath('compiled-hud-scoreboard.png') });
+  await page.keyboard.up('Tab'); await expect(board).toHaveCount(0);
+  await page.keyboard.press('Escape'); await page.getByRole('button', { name: 'VOLTAR AO MENU' }).click();
+  await expect(page.getByText('Renderização ativa')).toBeVisible(); expect(errors).toEqual([]);
+});
+
+test('compiled training supports shooting, reload, three weapons and restart without debug controls', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+  await page.goto('/#training');
+  await page.getByRole('button', { name: 'INICIAR TREINAMENTO' }).click();
+  await expect(page.getByRole('button', { name: 'ENTRAR NA ARENA' })).toBeVisible({ timeout: 20000 });
+  await expect(page.getByLabel('Debug do jogador')).toHaveCount(0);
+  await page.getByRole('button', { name: 'ENTRAR NA ARENA' }).click();
+  await expect.poll(() => page.evaluate(() => document.pointerLockElement?.tagName)).toBe('CANVAS');
+  const state = page.getByLabel('Estado do treinamento');
+  await page.mouse.down();
+  await expect.poll(async () => Number(await state.getAttribute('data-eliminations'))).toBeGreaterThan(0);
+  await page.mouse.up(); await page.keyboard.press('r');
+  await expect(page.getByText('RECARREGANDO...', { exact: true })).toBeVisible();
+  await expect(state).toHaveAttribute('data-magazine', '30');
+  for (const key of ['2', '3']) {
+    await page.keyboard.press(key); await expect(state).toHaveAttribute('data-selected', String(Number(key) - 1));
+    await page.waitForTimeout(950); await page.mouse.down();
+    await expect.poll(async () => Number(await state.getAttribute('data-magazine'))).toBeLessThan(key === '2' ? 6 : 5);
+    await page.mouse.up();
+  }
+  await page.keyboard.press('Escape'); await page.getByRole('button', { name: 'REINICIAR', exact: true }).click();
+  await expect(state).toHaveAttribute('data-hp', '100'); await expect(state).toHaveAttribute('data-magazine', '30');
+  await expect(state).toHaveAttribute('data-eliminations', '0');
+  await page.keyboard.press('Escape'); await page.getByRole('button', { name: 'VOLTAR AO MENU' }).click();
+  await expect(page.getByText('Renderização ativa')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
 test('npm start serves the compiled frontend and API without Vite', async ({ page, request }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));

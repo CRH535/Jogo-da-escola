@@ -29,7 +29,7 @@ export function App() {
   const { screen, navigate } = useMenuNavigation();
   const onBack = () => navigate('menu');
   if (screen === 'map') return <MapScreen video={preferences.video} onBack={() => navigate('play')} />;
-  if (screen === 'arena') return <PlayerScreen settings={settings} onBack={() => navigate('play')} onMenu={onBack} />;
+  if (screen === 'arena' || screen === 'range' || screen === 'bots') return <PlayerScreen key={screen} training={screen === 'range'} bots={screen === 'bots'} settings={settings} onBack={() => navigate(screen === 'range' ? 'training' : 'play')} onMenu={onBack} />;
   return <div className="game-shell">
     <SceneViewport onStatus={setRendererStatus} video={preferences.video} />
     <div className="interface-layer">
@@ -42,10 +42,10 @@ export function App() {
     </div>}
     <main className={`menu-content ${screen !== 'menu' ? 'inner-screen' : ''}`}>
       {screen === 'menu' && <MainMenu navigate={navigate} />}
-      {screen === 'play' && <PlayScreen preferences={preferences} update={update} onBack={onBack} onMap={() => navigate('map')} onExplore={() => navigate('arena')} />}
+      {screen === 'play' && <PlayScreen preferences={preferences} update={update} onBack={onBack} onMap={() => navigate('map')} onExplore={() => navigate('arena')} onStart={() => navigate('bots')} />}
       {screen === 'settings' && <SettingsScreen preferences={preferences} update={update} saved={saved} resetSettings={resetSettings} onBack={onBack} />}
       {screen === 'multiplayer' && <MultiplayerScreen onBack={onBack} />}
-      {screen === 'training' && <TrainingScreen onBack={onBack} />}
+      {screen === 'training' && <TrainingScreen onBack={onBack} onStart={() => navigate('range')} />}
       {screen === 'credits' && <CreditsScreen onBack={onBack} />}
       {screen === 'exit' && <ExitScreen onBack={onBack} />}
     </main>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-const screens = ['menu', 'play', 'map', 'arena', 'multiplayer', 'training', 'settings', 'credits', 'exit'] as const;
+const screens = ['menu', 'play', 'map', 'arena', 'range', 'bots', 'multiplayer', 'training', 'settings', 'credits', 'exit'] as const;
 export type MenuScreen = typeof screens[number];
 
 function currentScreen(): MenuScreen {
@@ -21,8 +21,9 @@ export function useMenuNavigation() {
   }, []);
   useEffect(() => {
     if (initialized.current) {
-      if (screen === 'menu') document.querySelector<HTMLButtonElement>(`[data-screen="${lastScreen.current === 'arena' ? 'play' : lastScreen.current}"]`)?.focus();
-      else if (screen === 'play' && (lastScreen.current === 'map' || lastScreen.current === 'arena')) document.querySelector<HTMLButtonElement>(`[data-screen="${lastScreen.current}"]`)?.focus();
+      if (screen === 'menu') document.querySelector<HTMLButtonElement>(`[data-screen="${lastScreen.current === 'arena' || lastScreen.current === 'bots' ? 'play' : lastScreen.current === 'range' ? 'training' : lastScreen.current}"]`)?.focus();
+      else if (screen === 'training' && lastScreen.current === 'range') document.querySelector<HTMLButtonElement>('[data-screen="range"]')?.focus();
+      else if (screen === 'play' && (lastScreen.current === 'map' || lastScreen.current === 'arena' || lastScreen.current === 'bots')) document.querySelector<HTMLButtonElement>(`[data-screen="${lastScreen.current}"]`)?.focus();
       else document.querySelector<HTMLElement>('[data-screen-title]')?.focus();
     }
     initialized.current = true;
@@ -31,7 +32,7 @@ export function useMenuNavigation() {
   }, [screen]);
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
-      if (screen === 'arena') return;
+      if (screen === 'arena' || screen === 'range' || screen === 'bots') return;
       if (event.key !== 'Escape' || event.defaultPrevented || document.querySelector('dialog[open]') || document.fullscreenElement) return;
       if (screen !== 'menu') { event.preventDefault(); navigate(screen === 'map' ? 'play' : 'menu'); }
     };

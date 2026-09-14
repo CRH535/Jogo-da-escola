@@ -24,13 +24,14 @@ export function createPlayerController(world: RAPIER.World, map: ArenaMap, spawn
   const previous: PlayerPose = { x: 0, y: 0, z: 0 };
   const desired = { x: 0, y: 0, z: 0 };
   const translation = { x: 0, y: 0, z: 0 };
+  const solidOnly = (candidate: RAPIER.Collider) => !candidate.isSensor();
   let jumpHeld = false;
   let disposed = false;
   let recoveries = 0;
 
-  function reset() {
-    const [x, y, z] = spawn.position;
-    Object.assign(state, { x, y: y + MOVEMENT.skin, z, vx: 0, vy: 0, vz: 0, yaw: spawn.yaw, grounded: false });
+  function reset(nextSpawn: SpawnPoint = spawn) {
+    const [x, y, z] = nextSpawn.position;
+    Object.assign(state, { x, y: y + MOVEMENT.skin, z, vx: 0, vy: 0, vz: 0, yaw: nextSpawn.yaw, grounded: false });
     previous.x = state.x; previous.y = state.y; previous.z = state.z;
     body.setTranslation({ x, y: state.y + MOVEMENT.height / 2, z }, true);
     body.setNextKinematicTranslation(body.translation());
@@ -60,8 +61,14 @@ export function createPlayerController(world: RAPIER.World, map: ArenaMap, spawn
     jumpHeld = jump;
     state.vy = state.grounded ? -2 : Math.max(-MOVEMENT.terminalSpeed, state.vy - MOVEMENT.gravity * MOVEMENT.step);
     desired.x = state.vx * MOVEMENT.step; desired.y = state.vy * MOVEMENT.step; desired.z = state.vz * MOVEMENT.step;
-    controller.computeColliderMovement(collider, desired, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS);
+    controller.computeColliderMovement(collider, desired, RAPIER.QueryFilterFlags.EXCLUDE_SENSORS, undefined, solidOnly);
     const movement = controller.computedMovement();
+    // Contacts with another kinematic capsule can add separation motion; keep it within the speed budget.
+    const horizontal = Math.hypot(movement.x, movement.z);
+    if (horizontal > speed * MOVEMENT.step) {
+      const limit = speed * MOVEMENT.step / horizontal;
+      movement.x *= limit; movement.z *= limit;
+    }
     const upward = state.vy > 0;
     state.grounded = controller.computedGrounded() && !upward;
     if (upward && movement.y < desired.y - 0.001) state.vy = 0;

@@ -31,7 +31,7 @@ test('offline setup saves player name, map, bot count and difficulty across relo
   await page.getByLabel('Nome do jogador').fill('Chris Silva');
   await page.getByLabel('Número de bots').selectOption('7');
   await page.getByLabel('Dificuldade').selectOption('hard');
-  await expect(page.getByRole('button', { name: 'INICIAR PARTIDA' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'INICIAR PARTIDA' })).toBeEnabled();
   await page.reload();
   await expect(page.getByLabel('Nome do jogador')).toHaveValue('Chris Silva');
   await expect(page.getByLabel('Número de bots')).toHaveValue('7');
@@ -162,13 +162,13 @@ test('fullscreen rejection gives feedback and tutorial replay can be scheduled',
   expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).preferences.gameplay.tutorialCompleted, key)).toBe(false);
 });
 
-test('unfinished modes do not simulate connections or start gameplay', async ({ page }) => {
+test('multiplayer remains unavailable while the local training entry is enabled', async ({ page }) => {
   await page.goto('/#multiplayer');
   await expect(page.getByRole('button', { name: 'CRIAR PARTIDA' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'ENTRAR EM PARTIDA' })).toBeDisabled();
   await page.getByRole('button', { name: 'Voltar ao menu', exact: true }).click();
   await page.getByRole('button', { name: 'TREINAMENTO', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'INICIAR TREINAMENTO' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'INICIAR TREINAMENTO' })).toBeEnabled();
 });
 
 for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }, { width: 320, height: 640 }]) {

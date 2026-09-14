@@ -30,8 +30,7 @@ client/
     game/
       rendering/               # renderer, cena, camera, materiais e dispose
       player/                  # entrada local, camera e previsao visual
-      weapons/                 # modelos, animacoes e feedback dos equipamentos
-      effects/                 # ParticleManager com pool
+      combat/                  # modelos, efeitos em pool e adaptador de combate local
     ui/                        # menus, HUD, feed, placar e fim de partida
     maps/                      # meshes, materiais e inspecao da arena
     network/                   # NetworkManager, snapshots e interpolacao
@@ -49,17 +48,17 @@ shared/
     protocol/                  # versao, contratos, eventos e erros
     simulation/
       player/                  # movimento, limites e colisao
-      weapons/                 # cooldown, municao e dano ficticio
-      bots/                    # estados de IA e navegacao
       match/                   # relogio, pontuacao e regras do FFA
       spawn/                   # escolha de spawn e protecao contra queda
+    gameplay/                  # equipamentos, vida e treinamento local
+    bots/                      # grafo, percepcao, estados, spawn e sessao local
     maps/                      # colliders, spawns e grafo de navegacao
     physics/                   # fabrica do mundo Rapier, sem renderizacao
 docs/
 tests/browser/
 ```
 
-Somente os diretorios com responsabilidade real das Etapas 1-4 foram criados.
+Somente os diretorios com responsabilidade real das Etapas 1-7 foram criados.
 Nao ha classes vazias ou sistemas de gameplay fingindo implementacao.
 
 ## Dependencias
@@ -76,6 +75,7 @@ Nao ha classes vazias ou sistemas de gameplay fingindo implementacao.
 | @playwright/test | Etapa 1, desenvolvimento | Validar navegador e capturas de tela |
 | pngjs, @types/pngjs | Etapa 1, desenvolvimento | Verificar pixels e movimento na cena capturada |
 | @dimforge/rapier3d-compat | Etapas 3-4 | Fisica, shape casts e character controller |
+| ngraph.graph, ngraph.path | Etapa 7 | Grafo navegavel e A* com tipos incluidos, sem Three/DOM |
 | socket.io, socket.io-client | Etapa 9 | Transporte, salas e reconexao |
 | zod | Etapa 9, se adequado | Schemas e validacao de payloads em runtime |
 | lucide-react | Etapa 2 | Icones de controles, com nomes acessiveis e tooltips |
@@ -107,9 +107,9 @@ Fullscreen usa o estado real do documento, iniciado por gesto e acompanhado
 por fullscreenchange. Nao e forçado ao recarregar e recusas sao informadas.
 Reset de configuracoes usa dialog nativo, preservando nome e configuracao de bots.
 
-Jogar permite configurar nome, mapa, bots e dificuldade, mas iniciar permanece
-desabilitado. Treinamento e multiplayer exibem indisponibilidade explicita.
-Nao ha simulacao falsa de partidas, lobby ou conexao Socket.IO nesta etapa.
+Na Etapa 2, JOGAR apenas salvava configuracoes. O treinamento foi habilitado
+na Etapa 5 e iniciar contra bots na Etapa 7. Multiplayer continua indisponivel,
+sem simulacao falsa de lobby ou conexao Socket.IO.
 
 Referencias da implementacao:
 - [Lucide React](https://lucide.dev/guide/react)
@@ -215,7 +215,212 @@ Referencias:
 - [Rapier: snap-to-ground](https://rapier.rs/docs/user_guides/javascript/character_controller_snap_to_ground/)
 - [MDN: Pointer Lock, eventos e recusa](https://developer.mozilla.org/en-US/docs/Web/API/Pointer_Lock_API)
 
-## Partidas e multiplayer (planejados, nao implementados)
+## Gameplay local (Etapa 5)
+
+Sem dependencias novas. `@neon-strike/shared/gameplay` e um subpath proprio,
+consumido em runtime apenas pela cena FPS carregada sob demanda. O menu nao
+importa Rapier por causa dos tipos do indicador de combate.
+
+`WeaponManager` possui catalogo, inventarios separados, cooldown global,
+tempo de recarga e mira. NX-7 e automatico; VX e ARC exigem novo pressionamento.
+Troca aplica no minimo 12 ticks de equipagem, preserva cooldown maior e cancela
+recarga. Municao so e transferida ao final da recarga, limitada pela reserva.
+`Life` valida dano finito positivo, limita HP a zero e agenda respawn em 180 ticks.
+Regras avancam pelo mesmo passo fixo de 60 Hz do movimento; nao usam timers.
+
+`TrainingSession` e o executor local desta modalidade, nao um MatchManager
+ou servidor multiplayer. Possui quatro alvos com sensores Rapier e vida propria,
+um campo ambiental de dano, vida do jogador e eventos de combate. Raycasts
+partem dos olhos, usam orientacao normalizada em direcoes unitarias, dispersao
+limitada e o primeiro impacto no mundo fisico; apenas a capsula propria e excluida.
+Sensores de alvos mortos sao desabilitados e reutilizados no respawn.
+
+O character controller usa EXCLUDE_SENSORS mais um predicado estavel que rejeita
+sensores. No Rapier 0.12 instalado, o teste real de movimento ainda parava no
+holograma usando apenas a flag; o predicado corrigiu o caso. Rampas, coberturas,
+paredes e layout original continuam intactos e com seus testes de regressao.
+
+O campo de raio 2 m no CORE aplica 25 HP apos 30 ticks consecutivos dentro;
+saida reinicia a exposicao. O spawn 08 fica fora dele e em plataforma solida.
+Nao ha adversarios, portanto o respawn fixo e seguro para este treinamento;
+nao representa ainda selecao segura contra bots ou outros jogadores.
+
+`InputManager` possui mouse esquerdo/direito, R e 1/2/3, incluindo fila para
+cliques curtos. Pausa, foco perdido, morte e respawn limpam a entrada; repeticao
+de tecla descartada nao reativa movimento sem um novo pressionamento.
+`TrainingRuntime` liga eventos a `WeaponView`, `ParticleManager`, objetos da
+arena e `AudioManager`; a UI recebe snapshots em no maximo 10 Hz em jogo.
+ESC congela tambem recarga/respawn. Reiniciar limpa vida, alvo e inventarios.
+
+Modelos de equipamentos e hologramas sao geometria original do Three.js.
+Efeitos usam 160 instancias de cubos e 24 segmentos de tracer prealocados.
+Recuo e flash sao visuais e moderados; a mira secundaria da ARC reduz o FOV
+para 65% do configurado. Materiais, geometrias, labels, instancias e sensores
+sao descartados antes do mundo fisico e renderer que os possuem.
+
+Audio sintetico provisorio usa Web Audio API. Contexto nasce somente no gesto
+de entrada, possui no maximo 12 vozes, respeita Geral/Efeitos, encerra vozes
+ao pausar e fecha o contexto ao sair. Falha de audio nao impede a simulacao.
+Musica, Interface e Passos permanecem preferencias sem fontes nesta etapa.
+
+`#range` abre treinamento; `#arena` preserva exploracao sem combate. HUD completo,
+placar, bots, partida, Socket.IO e autoridade remota nao foram antecipados.
+Os contratos atuais sao internos tipados, nao payloads de rede validados.
+
+Referencias e API instalada:
+- [Rapier: queries e primeiro impacto](https://rapier.rs/docs/user_guides/javascript/scene_queries/)
+- [Rapier: filtros](https://rapier.rs/docs/user_guides/javascript/scene_queries_filters/)
+- [MDN: AudioContext.resume](https://developer.mozilla.org/en-US/docs/Web/API/AudioContext/resume)
+- [MDN: encerramento de fontes](https://developer.mozilla.org/en-US/docs/Web/API/AudioScheduledSourceNode/stop)
+- Tipos locais de Rapier 0.12: `castRay` retorna `toi`; nao confundir com APIs de versoes posteriores.
+
+## HUD, estatisticas e placar (Etapa 6)
+
+`TrainingStats` recebe somente eliminacoes confirmadas por `TrainingSession`.
+Possui tempo em ticks, eliminacoes, derrotas e feed limitado; pontos sao
+derivados de eliminacoes x 100, sem duplicar um contador independente.
+O mesmo caminho que elimina um alvo registra o evento identificado e a
+pontuacao. Dano em alvo/jogador ja eliminado nao conta novamente.
+
+O feed mantem quatro eventos em ordem cronologica, com IDs monotonicos,
+atores identificados, equipamento e expiracao apos 300 ticks. A fila muda por
+substituicao, preservando snapshots anteriores. Renomear o perfil nao muda
+retroativamente os nomes nos eventos; reiniciar limpa a fila sem reutilizar IDs.
+Nao ha setTimeout/setInterval para expirar mensagens ou contar tempo.
+
+Somente o jogador humano local ocupa uma linha no placar de treinamento.
+Hologramas sao alvos e o campo e uma causa ambiental, nunca jogadores ficticios.
+Ping local e null e a UI mostra LOCAL; ping remoto desconhecido e apresentado
+como --. Ainda nao existe medicao de ping ou roster multiplayer nesta etapa.
+
+`shared/src/gameplay/hud` e publicado no subpath `@neon-strike/shared/hud`:
+contratos de resumo, atores, feed e linhas do placar; ordenacao pura sem mutar
+o array recebido; formatacao de tempo limitada a 99:59:59. Esse modulo nao
+importa Rapier, Three ou DOM. `HudSnapshot.clock.kind` distingue elapsed e
+remaining; o treinamento fornece apenas elapsed. Fim de partida nao e inferido
+pelo componente visual, sendo responsabilidade do futuro MatchManager.
+
+`TrainingRuntime` envia dados de combate e HUD em snapshots de ate 10 Hz
+durante o jogo. `CombatReadout` compoe `HudSummary`, `EventFeed` e `Scoreboard`
+com vida/municao/feedback existentes. Barra de recarga recebe progresso real
+do WeaponManager. A UI nao calcula dano, consome municao ou atribui pontos.
+
+`InputManager` continua dono do teclado/Pointer Lock. TAB emite transicoes
+de placar apenas ao pressionar/soltar, sem perder foco nem pausar. `clearGameplay`
+separa a limpeza de acoes de combate do estado visual, permitindo consultar
+o placar durante morte e respawn. `clear`, pausa, blur e perda de contexto
+fecham o placar. TAB fora do Pointer Lock continua navegacao normal de foco.
+Os listeners existentes sao removidos na saida, sem novo loop React ou timer.
+
+Tabela sem controles/foco interativo, com cabecalhos semanticos, aria-sort,
+linha local destacada e nomes escapados pelo React. Colunas compactas e
+quebra de nomes em telas estreitas; layout mais denso para pouca altura.
+O feed exibe dois eventos em telas ate 600 px, quatro nas maiores, preservando
+os mais recentes. Feed, mira e diagnostico cedem lugar ao placar para evitar
+sobreposicoes; durante respawn o contador fica no cabecalho do placar.
+
+Testes de renderizacao com oito linhas e tempo restante usam um fixture em
+`tests/fixtures`, importado apenas pelo Playwright via Vite. Ele nao participa
+do bundle de producao, da navegacao nem da sessao real de treinamento.
+
+Referencias:
+- [MDN: teclado, foco e eventos keydown/keyup](https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event)
+- [MDN: Pointer Lock e saida da captura](https://developer.mozilla.org/en-US/docs/Web/API/Pointer_Lock_API)
+
+## Bots locais (Etapa 7)
+
+`shared/bots` e um subpath separado para a sessao local `BotSession`. O treino
+estatico `TrainingSession` permanece independente. Ambos reutilizam Life,
+WeaponManager, pontuacao/feed e o adaptador de audio/efeitos/HUD existente.
+O nome TrainingRuntime foi preservado para evitar renomeacao sem necessidade;
+agora ele tambem adapta BotSession, sem simular a IA no React.
+
+NavigationGraph projeta uma grade de um metro sobre os colisores estaticos.
+Aceita piso/plataforma/rampa, exige apoio em quatro pontos laterais e margem
+para uma capsula. Conecta vizinhos com altura compativel, sem atalhos diagonais
+por cantos ou acessos laterais altos de rampas. A* usa ngraph.path, nao uma
+implementacao propria. A geometria e de uma unica camada por XZ; um futuro mapa
+com passagens sobrepostas exigira outra representacao, como navmesh.
+
+BotBrain decide visao a cada seis ticks (10 Hz), com fases deslocadas por bot.
+Destino e revisto a cada 30 ticks; A* so recalcula quando necessario, mantendo
+o trecho atual para evitar oscilacao. Custos adicionais contornam outros atores.
+Falta de progresso medida em um segundo gera recuo lateral e replanejamento,
+nunca teleporte. O mesmo controlador Rapier resolve gravidade, rampas e contatos.
+Correcao horizontal de contato tambem respeita o limite de velocidade.
+
+Estados PATROL/SEARCH/CHASE/ATTACK/RESPAWN. Percepcao exige alcance, campo de
+visao e raycast sem parede; proximidade de cinco metros admite alerta por tras.
+Busca usa apenas a ultima posicao vista e expira em tres segundos. Reacao minima,
+velocidade angular limitada, erro de mira e cadencia variam com a dificuldade.
+Nenhum perfil possui mira perfeita ou conhecimento continuo atraves de paredes.
+
+BotSession executa beforePhysics, passo Rapier compartilhado, afterPhysics e
+combate. Todos os atores possuem ID, Life, capsula e WeaponManager independentes.
+Hitscan exclui apenas a propria capsula; o primeiro solido/adversario bloqueia
+o disparo. Pontos e derrotas sao registrados somente apos a transicao de morte.
+Corpos eliminados nao bloqueiam passagens. Respawn apos 180 ticks escolhe spawn
+por distancia/oclusao e restaura capsula, orientacao, vida e equipamentos.
+
+JOGAR abre #bots com configuracao congelada durante a sessao; #range conserva
+os hologramas e o campo de dano. Bots nao sao criados no treinamento/exploracao.
+HUD identifica BOT em vez de inventar ping. Na Etapa 8, passou a mostrar tempo
+restante e a sessao de bots recebeu as regras de partida descritas abaixo.
+
+createBotObjects compartilha geometria e materiais, interpola poses com o mesmo
+alpha do jogador e anima passos com delta ativo. Nomes sao texturas locais com
+depth test; nenhum nome e injetado como HTML. Efeitos reutilizam pools limitados,
+sem crescer com o numero de disparos. Sons proximos sao placeholders mono, nao
+audio espacial completo. Dispose remove corpos, grafo, texturas e materiais.
+Debug exclusivo de desenvolvimento acrescenta poses/estados dos bots a 4 Hz.
+
+Validacao: caminhos entre todos os pares de spawn com capsulas reais; patrulha
+sem combate por dois minutos sem usar respawn como progresso; sete bots em
+combate por dois minutos; visao, memoria, reacao, armas, morte, score e descarte.
+Playwright testa configuracoes, combate/respawn reais, pausa, TAB, reinicio,
+transicoes repetidas e screenshots desktop/mobile. Resultados em STAGE-7.md.
+
+Referencias:
+- [ngraph.path: A*, pesos e heuristica](https://github.com/anvaka/ngraph.path)
+- [ngraph.graph: estrutura e tipos](https://github.com/anvaka/ngraph.graph)
+- [Rapier: controlador de personagem](https://rapier.rs/docs/user_guides/javascript/character_controller/)
+
+## Partidas locais (Etapa 8)
+
+`shared/src/match/MatchManager.ts` nao depende de DOM, renderer, bots ou fisica.
+Contrato atual de regras: modo FFA, 180 ticks de contagem, 36000 ticks de jogo,
+30 eliminacoes. Regras sao verificadas e copiadas; padroes imutaveis.
+Estados COUNTDOWN -> PLAYING -> MATCH_END; reset retorna a COUNTDOWN.
+ROUND_END nao e usado porque o FFA atual tem uma unica rodada.
+
+BotSession recebe opcionalmente uma politica de partida; testes unitarios
+antigos da IA ainda podem executar o sandbox sem limite. TrainingRuntime sempre
+passa FFA_RULES no modo bots da aplicacao. Sem nova opcao de URL/localStorage.
+Treinamento e exploracao continuam sem limites. PlayerScene usa o mesmo passo
+fixo para contar antes de habilitar fisica, IA e combate; comandos nao se acumulam.
+Pause continua uma propriedade do executor local, nao um segundo relogio.
+
+O tick de combate resolve os disparos em ordem estavel de atores. Assim que o
+limite e atingido, nao aceita dano/disparos adicionais; a avaliacao ao final do
+tick congela o resultado. Clock e verificacao do lider nao alocam um placar a
+cada frame; o roster completo e copiado somente no encerramento ou para o HUD.
+Contadores por ator registram projeteis e acertos de dano, inclusive pulsos VX.
+Ordenacao igual ao TAB: pontos, eliminacoes, menos derrotas e ID estavel.
+Ultimo tick com 30 eliminacoes tem precedencia sobre o motivo tempo esgotado.
+
+MatchResults recebe apenas dados imutaveis e callbacks. A tabela foi extraida
+do Scoreboard para reutilizar nomes, ordenacao e colunas sem um painel aninhado.
+Ao terminar, o executor libera Pointer Lock; callback tardio de unlock nao pode
+trocar a tela final por PAUSA. Revanche limpa armas/vida/IA/estatisticas/efeitos,
+reinicia contagem e solicita captura por novo gesto. Saida descarta a cena.
+Resultados nao possuem botao de lobby ate existir um lobby real.
+
+Testes: regras exatas de 3 s / 10 min / 30 eliminacoes; resultado imutavel;
+raycast/vida/respawn reais; contagem bloqueando inputs; pausa; fim com TAB;
+revanche, descarte e layout final desktop/mobile. Fixture isolada testa limites
+curtos no mesmo PlayerScreen/MatchManager e nao pertence ao bundle de producao.
+
+## Multiplayer (planejado, nao implementado)
 
 Offline: um executor local roda a simulacao compartilhada; pausar interrompe seu
 relogio. Online: a mesma organizacao de regras roda no servidor por sala;

@@ -1,10 +1,10 @@
-import { Compass, Eye, LockKeyhole, MapPin } from 'lucide-react';
+import { Compass, Eye, Play, MapPin } from 'lucide-react';
 import { normalizeName, type Preferences } from '../settings/preferences';
 import type { UpdatePreferences } from '../settings/usePreferences';
 import { ScreenHeader } from './ScreenHeader';
 import { SelectControl } from './controls';
 
-export function PlayScreen({ preferences, update, onBack, onMap, onExplore }: { preferences: Preferences; update: UpdatePreferences; onBack: () => void; onMap: () => void; onExplore: () => void }) {
+export function PlayScreen({ preferences, update, onBack, onMap, onExplore, onStart }: { preferences: Preferences; update: UpdatePreferences; onBack: () => void; onMap: () => void; onExplore: () => void; onStart: () => void }) {
   return <section className="screen" aria-labelledby="play-heading">
     <ScreenHeader title="JOGAR" onBack={onBack} />
     <div className="setup-layout">
@@ -27,12 +27,11 @@ export function PlayScreen({ preferences, update, onBack, onMap, onExplore }: { 
       </div>
       <aside className="match-summary">
         <MapPin aria-hidden="true" /><p className="eyebrow">ARENA 01</p><h3>NEON FACILITY</h3>
-        <dl><div><dt>Modo</dt><dd>Free for All</dd></div><div><dt>Tempo</dt><dd>10 minutos</dd></div>
-          <div><dt>Limite</dt><dd>30 eliminações</dd></div></dl>
+        <dl><div><dt>Modo</dt><dd>Free for All local</dd></div><div><dt>Tempo</dt><dd>10 minutos</dd></div><div><dt>Limite</dt><dd>30 eliminações</dd></div>
+          <div><dt>Adversários</dt><dd>{preferences.match.bots} bots</dd></div></dl>
         <button className="button secondary map-open" data-screen="map" onClick={onMap}><Eye aria-hidden="true" />VER MAPA</button>
         <button className="button secondary arena-open" data-screen="arena" onClick={onExplore}><Compass aria-hidden="true" />EXPLORAR ARENA</button>
-        <p className="availability" id="match-availability">Partidas indisponíveis nesta versão.</p>
-        <button className="button primary" disabled aria-describedby="match-availability"><LockKeyhole aria-hidden="true" />INICIAR PARTIDA</button>
+        <button className="button primary" data-screen="bots" onClick={onStart}><Play aria-hidden="true" />INICIAR PARTIDA</button>
       </aside>
     </div>
   </section>;

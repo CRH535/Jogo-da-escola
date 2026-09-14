@@ -97,7 +97,7 @@ test('map navigation preserves setup, keyboard focus, history and a single live 
     await expect(page.getByText('Renderização ativa')).toBeVisible();
     await expect(page.getByLabel('Nome do jogador')).toHaveValue('Chris');
     await expect(page.getByLabel('Número de bots')).toHaveValue('7');
-    await expect(page.getByRole('button', { name: 'INICIAR PARTIDA' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'INICIAR PARTIDA' })).toBeEnabled();
     await expect(page.locator('canvas')).toHaveCount(1);
     await expect.poll(() => page.evaluate(() => (window as unknown as { liveContextCount(): number }).liveContextCount())).toBe(1);
   }

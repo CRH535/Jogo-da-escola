@@ -3,6 +3,7 @@ import { MOVEMENT, type PlayerController } from '../simulation/player/movement.j
 import { Life } from './Life.js';
 import { ENERGY_FIELD, TARGET_HALF_SIZE, TRAINING_TARGETS } from './trainingLayout.js';
 import { WeaponManager, damageAtDistance, type CombatInput } from './weapons.js';
+import { TrainingStats } from './TrainingStats.js';
 
 export type CombatEvent =
   | { type: 'shot' | 'reload' | 'loaded' | 'damage' | 'death' | 'respawn' }
@@ -10,16 +11,17 @@ export type CombatEvent =
   | { type: 'elimination'; x: number; y: number; z: number };
 export interface CombatSnapshot {
   hp: number; respawn: number; selected: number; name: string; magazine: number; reserve: number;
-  reload: number; aiming: boolean; hits: number; eliminations: number;
+  reload: number; reloadProgress: number; capacity: number; aiming: boolean; hits: number; eliminations: number;
 }
 
 export class TrainingSession {
   readonly life = new Life();
   readonly weapons = new WeaponManager();
+  readonly stats = new TrainingStats();
   readonly targets;
   readonly events: CombatEvent[] = [];
   hits = 0;
-  eliminations = 0;
+  get eliminations() { return this.stats.eliminations; }
   private exposure = 0;
   private disposed = false;
   private readonly ray = new RAPIER.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 });
@@ -33,10 +35,12 @@ export class TrainingSession {
     const { weapons, life } = this;
     return { hp: life.hp, respawn: Math.ceil(life.respawnTicks / 60), selected: weapons.selected, name: weapons.weapon.name,
       magazine: weapons.current.magazine, reserve: weapons.current.reserve, reload: weapons.reloadTicks / 60,
+      capacity: weapons.weapon.magazine, reloadProgress: weapons.reloadTicks ? 1 - weapons.reloadTicks / weapons.weapon.reload : 0,
       aiming: weapons.aiming, hits: this.hits, eliminations: this.eliminations };
   }
   step(input: CombatInput, yaw: number, pitch: number) {
     this.events.length = 0;
+    this.stats.step();
     let queriesChanged = false;
     for (const target of this.targets) {
       if (target.life.step()) { target.collider.setEnabled(true); queriesChanged = true; }
@@ -61,6 +65,7 @@ export class TrainingSession {
     this.events.push({ type: 'damage' });
     if (!this.life.alive) {
       this.weapons.cancel(); this.player.clearInput();
+      this.stats.playerEliminated();
       this.events.push({ type: 'death' });
     }
   }
@@ -85,7 +90,7 @@ export class TrainingSession {
       if (damaged && target) {
         this.hits++;
         if (!target.life.alive) {
-          this.eliminations++;
+          this.stats.targetEliminated(target.id, weapon.name);
           target.collider.setEnabled(false);
           this.world.updateSceneQueries();
           const [x, y, z] = target.position;
@@ -96,7 +101,7 @@ export class TrainingSession {
   }
   reset() {
     this.life.reset(); this.weapons.reset(); this.events.length = 0;
-    this.exposure = 0; this.hits = 0; this.eliminations = 0;
+    this.exposure = 0; this.hits = 0; this.stats.reset();
     for (const target of this.targets) { target.life.reset(); target.collider.setEnabled(true); }
     this.world.updateSceneQueries();
   }
