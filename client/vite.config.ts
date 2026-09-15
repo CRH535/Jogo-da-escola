@@ -14,12 +14,13 @@ export default defineConfig(({ mode }) => {
   if (!['http:', 'https:'].includes(target.protocol)) throw new Error('Invalid API_PROXY_TARGET.');
   return {
     plugins: [react()],
+    optimizeDeps: { include: ['socket.io-client'] },
     envDir: environmentDirectory,
     server: {
       host: '0.0.0.0',
       port,
       strictPort: true,
-      proxy: { '/api': { target: target.origin, changeOrigin: true } },
+      proxy: { '/api': { target: target.origin, changeOrigin: true }, '/socket.io': { target: target.origin, changeOrigin: true, ws: true } },
     },
   };
 });

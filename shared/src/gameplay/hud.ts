@@ -7,7 +7,7 @@ export interface FeedEntry {
   id: number; attacker: FeedActor; victim: FeedActor; equipment: string | null; expiresAtTick: number;
 }
 export interface HudSnapshot {
-  mode?: 'training' | 'bots';
+  mode?: 'training' | 'bots' | 'network';
   clock: { kind: 'elapsed' | 'remaining'; seconds: number };
   score: number; deaths: number; players: readonly ScoreRow[]; feed: readonly FeedEntry[];
 }

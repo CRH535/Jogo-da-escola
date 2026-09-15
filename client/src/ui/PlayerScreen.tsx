@@ -9,6 +9,9 @@ import { CombatReadout } from './CombatReadout';
 import type { TrainingReadout } from '../game/combat/TrainingRuntime';
 import type { MatchRules } from '@neon-strike/shared/match';
 import { MatchResults } from './match/MatchResults';
+import type { NetworkOptions, NetworkReadout as NetworkState } from '../network/NetworkManager';
+import { NetworkReadout } from './network/NetworkReadout';
+import './hud/hud.css';
 import '../game/player/player.css';
 
 type Status = 'loading' | 'ready' | 'playing' | 'paused' | 'ended' | 'failed';
@@ -24,8 +27,8 @@ function Overlay({ children, settings, results, onCancel }: { children: ReactNod
   </dialog>;
 }
 
-export function PlayerScreen({ settings, onBack, onMenu, training = false, bots = false, rules }: {
-  settings: ReturnType<typeof usePreferences>; onBack: () => void; onMenu: () => void; training?: boolean; bots?: boolean; rules?: Readonly<MatchRules>;
+export function PlayerScreen({ settings, onBack, onMenu, training = false, bots = false, rules, network }: {
+  settings: ReturnType<typeof usePreferences>; onBack: () => void; onMenu: () => void; training?: boolean; bots?: boolean; rules?: Readonly<MatchRules>; network?: NetworkOptions;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const scene = useRef<PlayerScene | null>(null);
@@ -38,6 +41,7 @@ export function PlayerScreen({ settings, onBack, onMenu, training = false, bots 
   const [debug, setDebug] = useState<PlayerDebug | null>(null);
   const [combat, setCombat] = useState<TrainingReadout | null>(null);
   const [scoreboardOpen, setScoreboardOpen] = useState(false);
+  const [networkState, setNetworkState] = useState<NetworkState | null>(null);
   const started = useRef(false);
   useEffect(() => {
     let active = true;
@@ -62,9 +66,11 @@ export function PlayerScreen({ settings, onBack, onMenu, training = false, bots 
           if (!active) return;
           setCombat(next);
           if (next.match?.state === 'MATCH_END') { setStatus('ended'); setShowSettings(false); setScoreboardOpen(false); }
+          else if (network) setStatus((previous) => previous === 'ended' ? 'ready' : previous);
         },
         onScoreboard: (open) => { if (active) setScoreboardOpen(open); },
-      }, training, bots ? { count: preferencesRef.current.match.bots, difficulty: preferencesRef.current.match.difficulty } : undefined, rules);
+        onNetwork: (next) => { if (active) setNetworkState(next); },
+      }, training, bots ? { count: preferencesRef.current.match.bots, difficulty: preferencesRef.current.match.difficulty } : undefined, rules, network);
       setStatus('ready');
     }
     void initialize().catch((error: unknown) => {
@@ -72,20 +78,21 @@ export function PlayerScreen({ settings, onBack, onMenu, training = false, bots 
       if (active) { console.error('[PLAYER] Initialization failed', error); setStatus('failed'); }
     });
     return () => { active = false; scene.current?.dispose(); scene.current = null; physics?.dispose(); };
-  }, [training, bots, rules]);
+  }, [training, bots, rules, network]);
   useEffect(() => { scene.current?.setPreferences(settings.preferences); }, [settings.preferences]);
   useEffect(() => {
     if (status === 'ready' || status === 'paused') document.querySelector<HTMLButtonElement>('[data-player-resume]')?.focus();
   }, [status, showSettings]);
   function resume() { setInputError(''); scene.current?.resume(); }
 
-  const modeLabel = bots ? 'COMBATE CONTRA BOTS' : training ? 'TREINAMENTO' : 'EXPLORAÇÃO LIVRE';
-  return <main className="fps-screen" data-player-status={status} data-training={training} data-bots={bots}>
+  const modeLabel = network ? 'FREE FOR ALL LAN' : bots ? 'COMBATE CONTRA BOTS' : training ? 'TREINAMENTO' : 'EXPLORAÇÃO LIVRE';
+  return <main className="fps-screen" data-player-status={status} data-training={training} data-bots={bots} data-network={Boolean(network)}>
     <div ref={container} className="fps-viewport" />
     <div className="fps-chrome">
       <header className="fps-location"><span>NEON FACILITY</span><span>{modeLabel}</span></header>
       {status === 'playing' && !scoreboardOpen && (!combat || combat.hp > 0 && combat.match?.state !== 'COUNTDOWN') && <div className="fps-reticle" aria-hidden="true" />}
-      {(training || bots) && combat && <CombatReadout state={combat} playing={status === 'playing'} scoreboard={scoreboardOpen} />}
+      {(training || bots || network) && combat && <CombatReadout state={combat} playing={status === 'playing'} scoreboard={scoreboardOpen} />}
+      {networkState && <NetworkReadout state={networkState} combat={Boolean(combat)} scoreboard={!combat && status === 'playing' && scoreboardOpen} />}
       {import.meta.env.DEV && debugEnabled && debug && <output className="fps-debug" hidden={status === 'ended' || status === 'playing' && scoreboardOpen} aria-label="Diagnóstico do jogador"
         data-x={debug.x} data-y={debug.y} data-z={debug.z} data-speed={debug.speed} data-grounded={debug.grounded} data-yaw={debug.yaw} data-pitch={debug.pitch} data-camera-y={debug.cameraY} data-fov={debug.fov} data-bots={JSON.stringify(debug.bots)}>
         <span>DEBUG / {debug.fps.toFixed(0)} FPS / {debug.calls} draw calls / {debug.geometries} geometrias</span>
@@ -96,21 +103,22 @@ export function PlayerScreen({ settings, onBack, onMenu, training = false, bots 
       </output>}
     </div>
     {status !== 'playing' && <Overlay settings={showSettings} results={status === 'ended'} onCancel={() => { if (showSettings) setShowSettings(false); else if (!started.current) onBack(); }}>
-      {status === 'ended' && combat?.match?.result ? <MatchResults result={combat.match.result} onMenu={onMenu} onAgain={() => {
+      {status === 'ended' && combat?.match?.result ? <MatchResults result={combat.match.result} nextRoundSeconds={network ? combat.nextRoundSeconds : undefined} onMenu={onMenu} onAgain={() => {
         started.current = false; setStatus('ready'); scene.current?.restart(); resume();
       }} /> : showSettings ? <SettingsScreen {...settings} onBack={() => setShowSettings(false)} /> : <>
         <p className="eyebrow">NEON STRIKE / {modeLabel}</p>
-        <h2>{status === 'loading' ? 'CARREGANDO MAPA...' : status === 'failed' ? 'Arena indisponível' : status === 'paused' ? 'PAUSA' : 'NEON FACILITY'}</h2>
+        <h2>{status === 'loading' ? 'CARREGANDO MAPA...' : status === 'failed' ? 'Arena indisponível' : status === 'paused' ? network ? 'MENU LOCAL' : 'PAUSA' : 'NEON FACILITY'}</h2>
+        {networkState && <p className="network-status" role="status">{networkState.message}</p>}
         {status === 'failed' && <p className="fps-notice" role="alert">Não foi possível manter a cena 3D. Volte ao menu ou recarregue a página.</p>}
         {inputError && <p className="fps-notice" role="alert">{inputError}</p>}
         <div className="fps-actions">
           {(status === 'ready' || status === 'paused') && <>
-            <button data-player-resume className="button primary" onClick={resume}><Play aria-hidden="true" />{status === 'paused' ? 'CONTINUAR' : 'ENTRAR NA ARENA'}</button>
+            <button data-player-resume className="button primary" disabled={Boolean(network && networkState?.state !== 'connected')} onClick={resume}><Play aria-hidden="true" />{status === 'paused' ? 'CONTINUAR' : 'ENTRAR NA ARENA'}</button>
             <button className="button secondary" onClick={() => setShowSettings(true)}><Settings2 aria-hidden="true" />CONFIGURAÇÕES</button>
-            {started.current && <button className="button secondary" onClick={() => { scene.current?.restart(); resume(); }}><RotateCcw aria-hidden="true" />REINICIAR</button>}
+            {started.current && !network && <button className="button secondary" onClick={() => { scene.current?.restart(); resume(); }}><RotateCcw aria-hidden="true" />REINICIAR</button>}
           </>}
-          <button className="button secondary" onClick={started.current ? onMenu : onBack}>
-            {started.current ? <LogOut aria-hidden="true" /> : <ArrowLeft aria-hidden="true" />}{started.current ? 'VOLTAR AO MENU' : training ? 'VOLTAR AO TREINAMENTO' : 'VOLTAR A JOGAR'}
+          <button className="button secondary" onClick={network ? onBack : started.current ? onMenu : onBack}>
+            {network || started.current ? <LogOut aria-hidden="true" /> : <ArrowLeft aria-hidden="true" />}{network ? 'DESCONECTAR' : started.current ? 'VOLTAR AO MENU' : training ? 'VOLTAR AO TREINAMENTO' : 'VOLTAR A JOGAR'}
           </button>
         </div>
         {import.meta.env.DEV && (status === 'ready' || status === 'paused') && <label className="fps-debug-toggle">

@@ -14,7 +14,7 @@
 .combat-death { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 16px; padding: 32px; text-align: center; background: #101918ba; color: #f2fff9; }
 .combat-death h2 { font-size: 26px; line-height: 1.25; overflow-wrap: anywhere; }
 .combat-death p { font: 14px monospace; color: #b9f3dc; }
-.fps-screen[data-training="true"] .fps-debug, .fps-screen[data-bots="true"] .fps-debug { bottom: 116px; }
+.fps-screen[data-training="true"] .fps-debug, .fps-screen[data-bots="true"] .fps-debug, .fps-screen[data-network="true"] .fps-debug { bottom: 116px; }
 @media (max-width: 600px) {
   .combat-bottom { left: 16px; right: 16px; bottom: 16px; }
   .combat-bottom strong { font-size: 28px; }

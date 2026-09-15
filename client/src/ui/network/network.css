@@ -1,0 +1,14 @@
+.network-summary { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); display: flex; gap: 24px; padding: 10px 18px; border-bottom: 1px solid #62776d; background: #101918d9; font: 12px monospace; }
+.network-summary span { display: flex; gap: 8px; align-items: center; white-space: nowrap; }
+.network-summary svg { width: 15px; height: 15px; color: #93dced; }
+.network-status { margin-top: 14px; color: #efd48d; font: 12px/1.5 monospace; overflow-wrap: anywhere; }
+.network-form { max-width: 640px; width: 100%; }
+.network-form .action-row { margin-top: 24px; }
+.network-form input { min-width: 0; }
+.network-board th:first-child { width: 45%; }
+.network-readout[data-combat="true"] .network-summary { top: 66px; right: 18px; left: auto; transform: none; padding: 6px; gap: 12px; }
+@media (max-width: 800px) { .network-summary { top: 55px; } }
+@media (max-width: 800px) {
+  .network-readout[data-combat="true"] .network-summary { top: 110px; right: 16px; padding: 3px 6px; }
+  .fps-screen[data-network="true"] .hud-feed { top: 146px; }
+}

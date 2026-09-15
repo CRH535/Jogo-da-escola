@@ -1,16 +1,5 @@
-import { ArrowLeft, Crosshair, LockKeyhole, LogIn, Play, Plus, Power } from 'lucide-react';
+import { ArrowLeft, Crosshair, Play, Power } from 'lucide-react';
 import { ScreenHeader } from './ScreenHeader';
-
-export function MultiplayerScreen({ onBack }: { onBack: () => void }) {
-  return <section className="screen">
-    <ScreenHeader title="MULTIPLAYER" onBack={onBack} />
-    <div className="empty-state"><LockKeyhole className="state-icon" aria-hidden="true" /><span className="eyebrow">REDE LOCAL / LAN</span>
-      <h3>Multiplayer em preparação</h3><p id="network-availability">Salas e conexão entre jogadores indisponíveis nesta versão.</p>
-      <div className="action-row"><button className="button primary" disabled aria-describedby="network-availability"><Plus aria-hidden="true" />CRIAR PARTIDA</button>
-        <button className="button secondary" disabled aria-describedby="network-availability"><LogIn aria-hidden="true" />ENTRAR EM PARTIDA</button></div>
-    </div>
-  </section>;
-}
 
 export function TrainingScreen({ onBack, onStart }: { onBack: () => void; onStart: () => void }) {
   return <section className="screen">
@@ -28,7 +17,7 @@ export function CreditsScreen({ onBack }: { onBack: () => void }) {
       <p>Desenvolvido utilizando tecnologias web.</p><p>Geometria original criada em código. Áudio sintético original (provisório).</p></div>
     <table className="credits-table"><caption>Bibliotecas e licenças</caption><thead><tr><th scope="col">Biblioteca</th><th scope="col">Licença</th></tr></thead>
       <tbody>{[
-        ['React / React DOM', 'MIT'], ['Three.js', 'MIT'], ['Express', 'MIT'], ['Lucide', 'ISC'],
+        ['React / React DOM', 'MIT'], ['Three.js', 'MIT'], ['Express / Socket.IO / Socket.IO Client', 'MIT'], ['Lucide', 'ISC'],
         ['Rapier', 'Apache-2.0'], ['ngraph.graph / ngraph.events', 'BSD-3-Clause'], ['ngraph.path', 'MIT'],
         ['Vite / plugin React', 'MIT'], ['TypeScript', 'Apache-2.0'], ['tsx / concurrently', 'MIT'],
         ['Playwright', 'Apache-2.0'], ['pngjs / DefinitelyTyped', 'MIT'],

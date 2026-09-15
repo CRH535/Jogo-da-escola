@@ -31,6 +31,7 @@ client/
       rendering/               # renderer, cena, camera, materiais e dispose
       player/                  # entrada local, camera e previsao visual
       combat/                  # modelos, efeitos em pool e adaptador de combate local
+      network/                 # previsao/replay e modelos remotos
     ui/                        # menus, HUD, feed, placar e fim de partida
     maps/                      # meshes, materiais e inspecao da arena
     network/                   # NetworkManager, snapshots e interpolacao
@@ -40,12 +41,13 @@ server/
   src/
     config/                    # variaveis e configuracao de inicializacao
     http/                      # API HTTP e arquivos do build
-    networking/                # Socket.IO, limites, validacao e protocolos
+    network/                   # Socket.IO, limites e MovementArena
     rooms/                     # RoomManager, lobby, pronto e host
     game/                      # executor autoritativo das salas
 shared/
   src/
     protocol/                  # versao, contratos, eventos e erros
+    network/                   # contrato LAN, validacao e interpolacao
     simulation/
       player/                  # movimento, limites e colisao
       match/                   # relogio, pontuacao e regras do FFA
@@ -58,7 +60,7 @@ docs/
 tests/browser/
 ```
 
-Somente os diretorios com responsabilidade real das Etapas 1-7 foram criados.
+Somente os diretorios com responsabilidade real das Etapas 1-9 foram criados.
 Nao ha classes vazias ou sistemas de gameplay fingindo implementacao.
 
 ## Dependencias
@@ -76,8 +78,7 @@ Nao ha classes vazias ou sistemas de gameplay fingindo implementacao.
 | pngjs, @types/pngjs | Etapa 1, desenvolvimento | Verificar pixels e movimento na cena capturada |
 | @dimforge/rapier3d-compat | Etapas 3-4 | Fisica, shape casts e character controller |
 | ngraph.graph, ngraph.path | Etapa 7 | Grafo navegavel e A* com tipos incluidos, sem Three/DOM |
-| socket.io, socket.io-client | Etapa 9 | Transporte, salas e reconexao |
-| zod | Etapa 9, se adequado | Schemas e validacao de payloads em runtime |
+| socket.io, socket.io-client | Etapa 9 | Transporte WebSocket e reconexao; salas futuras |
 | lucide-react | Etapa 2 | Icones de controles, com nomes acessiveis e tooltips |
 
 O test runner do Node, fetch, leitura de .env e descoberta de interfaces de rede
@@ -108,8 +109,8 @@ por fullscreenchange. Nao e forçado ao recarregar e recusas sao informadas.
 Reset de configuracoes usa dialog nativo, preservando nome e configuracao de bots.
 
 Na Etapa 2, JOGAR apenas salvava configuracoes. O treinamento foi habilitado
-na Etapa 5 e iniciar contra bots na Etapa 7. Multiplayer continua indisponivel,
-sem simulacao falsa de lobby ou conexao Socket.IO.
+na Etapa 5 e iniciar contra bots na Etapa 7. Conexao LAN foi habilitada na
+Etapa 9, sem simular um lobby ainda inexistente.
 
 Referencias da implementacao:
 - [Lucide React](https://lucide.dev/guide/react)
@@ -130,8 +131,8 @@ malha fechada com faces externas. Nao existem medidas duplicadas no renderer.
 e cria mundos independentes, com um collider fixo por solido. Cuboides para
 caixas; convex hull dos mesmos vertices visuais para rampas. Nenhum collider
 depende de Three.js. O mundo pode ser criado em Node ou no navegador e possui
-dispose idempotente para liberar sua memoria WASM. O backend HTTP ainda nao
-cria mundos: simulacao autoritativa continua nas etapas futuras.
+dispose idempotente para liberar sua memoria WASM. Desde a Etapa 9, o backend
+cria um mundo para a movimentacao autoritativa LAN.
 
 `client/src/maps/buildMapMeshes` cria e possui as geometrias, materiais e
 texturas locais dos rotulos. Caixas compartilham uma geometria e os materiais
@@ -420,33 +421,89 @@ raycast/vida/respawn reais; contagem bloqueando inputs; pausa; fim com TAB;
 revanche, descarte e layout final desktop/mobile. Fixture isolada testa limites
 curtos no mesmo PlayerScreen/MatchManager e nao pertence ao bundle de producao.
 
-## Multiplayer (planejado, nao implementado)
+## Base multiplayer (Etapa 9)
+
+Implementados `shared/src/network`, `server/src/network`,
+`client/src/network/NetworkManager` e `client/src/game/network`.
+Eventos tipados: network:welcome/error/probe, world:state e player:input/active/leave.
+Validadores pequenos, explicitos e testados; nenhuma biblioteca adicional de schema.
+Socket.IO 4.8.3 sobre WebSocket, limite de payload de 8 KiB, sem long-polling.
+Vite encaminha /socket.io com upgrade; build servido pelo Express usa a mesma porta.
+
+Uma MovementArena por servidor, oito participantes com UUID e spawn atribuídos
+no servidor. O transporte nao recebe posicao, velocidade, dt, HP, alvo ou dano.
+Rapier e o controlador compartilhado determinam colisao, aceleracao, corrida,
+gravidade e pulo em 60 Hz, maximo seis passos de recuperacao por iteracao.
+Jogadores nao bloqueiam outros jogadores na LAN para manter previsao contra
+colisores estaticos reproduzivel; modos locais mantem a colisao anterior.
+
+Cliente gera comandos a 60 Hz e envia lotes de dois a 30 Hz, sequenciais por
+epoch de conexao. Servidor aceita no maximo quatro comandos por pacote e 12
+pendentes, processando apenas um por tick. Nao usa dt do cliente. Sem comando,
+freia movimento e continua gravidade, preservando a borda do pulo segurado.
+RateLimit por socket: 40 eventos/s, burst 20; handshake: 2/s, burst 16 por IP,
+registro limitado a 64 IPs. Valores nao finitos, campos inesperados, sequencias
+duplicadas, epoch antigo e eventos avulsos de dano sao rejeitados. IDs e credenciais
+nao sao enviados em logs juntos nem expostos como identidade configuravel.
+
+Snapshots completos de ate oito atores a 20 Hz, com tick e ack de comando.
+Client prediction restaura checkpoint de posicao/velocidade/grounded/jumpHeld
+e reaplica somente inputs nao confirmados (maximo 120). Erro pequeno recebe
+offset visual limitado a 0.35 m, com decaimento; correcao >= 1 m e imediata.
+Avatares usam buffer de 32 snapshots, atraso de 100 ms, menor arco de rotacao
+e extrapolacao horizontal limitada a dois ticks (33 ms). Geometria/material
+compartilhados, oito modelos reutilizados, labels atualizados somente ao mudar nome.
+
+Ping e RTT de probe medido pelo servidor. UI publica no maximo a 10 Hz;
+debug de poses/tick somente em DEV. ESC/blur envia active=false, limpa fila,
+mas o mundo e os demais jogadores continuam. Sair descarta socket, listeners,
+buffers, modelos e recursos do renderer. Nenhuma logica Socket.IO nos componentes.
+
+Credencial aleatoria de 32 bytes, privada no welcome e apenas na memoria do
+cliente. Queda de transporte reserva ator por 10 s e desabilita sua capsula.
+Retomada preserva ID, rotaciona epoch, limpa comandos e aplica novo snapshot.
+Saida explicita libera imediatamente. Quatro tentativas com delay 0.5-1.5 s;
+heartbeat 1 s / timeout 2 s, snapshot parado por 1.5 s fecha transporte para
+ressincronizar. Servidor reiniciado invalida sessoes. Reconexao exige gesto
+para Pointer Lock. Se o servidor ainda ve a conexao antiga como ativa, o cliente
+aguarda sua expiracao com ate tres novas tentativas de retomada, uma por segundo.
+Reload nao salva nem recupera credenciais automaticamente.
+
+O escopo da Etapa 9 foi movimentacao; a Etapa 10 abaixo acrescenta combate.
+Ainda nenhum lobby, host ou pronto. Nomes nao sao autenticacao. HTTP/WS e para
+LAN confiavel; sem TLS, contas, protecao DDoS ou publicacao publica.
+
+## Combate online (Etapa 10)
 
 Offline: um executor local roda a simulacao compartilhada; pausar interrompe seu
-relogio. Online: a mesma organizacao de regras roda no servidor por sala;
+relogio. Online: a mesma organizacao de regras roda no servidor por arena;
 abrir o menu so desativa os comandos do jogador local.
 
-Ponto de partida a medir: simulacao com passo fixo de 60 Hz, inputs agrupados em
-ate 30 Hz e snapshots em 20 Hz. Renderizacao e frequencia de rede independentes.
-Acumulador tera limite de passos para nao entrar em espiral apos uma aba suspensa.
-O servidor calcula o tempo por relogio monotonico; nao aceita tempo informado pelo cliente.
+`CombatArena` estende os pontos de ciclo do MovementArena, preservando a fisica.
+Reutiliza Life, WeaponManager, MatchManager, Visibility e selectSpawn. O servidor
+controla cadencia, municao, recarga, dispersao, raycast/oclusao, HP, respawn,
+eliminacoes, feed, score e tempo. Cliente envia apenas comandos do equipamento.
+Versao do protocolo: 2. `lifeId` invalida comandos de vidas/rodadas anteriores.
+O cliente descarta previsao antiga sem criar lacunas na sequencia de transporte.
 
-Cliente envia sequencia, direcao de movimento, orientacao da camera e acoes.
-Nunca decide dano, HP, pontuacao, IDs, respawn, municao ou posicao final.
-Servidor normaliza inputs, rejeita valores nao finitos, sequencias repetidas,
-excesso de eventos, acoes incompatíveis com o estado e configuracoes invalidas.
+Dois participantes conectados iniciam automaticamente COUNTDOWN de 180 ticks.
+PLAYING dura 36000 ticks ou 30 eliminacoes. MATCH_END congela resultados por 900
+ticks e inicia outra contagem ou WAITING. Nenhum endpoint de restart/dano/teleporte.
+Regras reduzidas de testes sao injetadas no construtor do servidor isolado, nunca
+em inputs, query strings ou localStorage da aplicacao.
 
-Cada snapshot inclui tick e ultima sequencia processada. Jogador local usa
-previsao e reconciliacao; jogadores remotos usam buffer de interpolacao inicial
-de 100 ms, ajustavel apos medicao. Extrapolacao curta e limitada, nunca infinita.
-Eventos de combate levam IDs para deduplicacao; disparos sao validados por
-cadencia, municao, estado e raycast do servidor. Compensacao de latencia, se
-necessaria, tera historico e janela limitados, sem confiar no timestamp do cliente.
+Snapshots trazem fighters, match, feed e ate 64 eventos recentes identificados.
+`NetworkCombatPresentation` deduplica efeitos, reutiliza pools/modelos/audio e
+adapta dados para o HUD existente. Nao calcula dano ou municao. Welcome ignora
+historico de efeitos; respawn reposiciona sem interpolar entre pontos do mapa.
+UI permanece ate 10 Hz, inputs 30 pacotes/s, snapshots 20 Hz. Sem biblioteca nova.
+Disparos usam o mundo atual no servidor; rewind de latencia permanece fora desta
+etapa. Avatares mortos desaparecem; o menu local nao concede invulnerabilidade.
 
-Handshake verifica versao de protocolo. Identidade de jogador sera distinta do
-ID de transporte, com retomada temporaria vinculada a uma sessao criada pelo
-servidor. Reconectar sempre exige ressincronizacao se a recuperacao falhar.
-Saida explicita do host encerra a sala; queda breve reserva uma janela limitada
+## Lobby (Etapa 11, planejado)
+
+Lobby atribuira host e regras por sala sobre as identidades da Etapa 9.
+Saida explicita do host encerrara a sala; queda breve reservara uma janela limitada
 de retomada antes de encerrar e avisar os demais. Nunca migrar host silenciosamente.
 
 Estados previstos: MENU, LOBBY, LOADING, COUNTDOWN, PLAYING, ROUND_END,
@@ -477,4 +534,6 @@ regras separado, sem implementar TDM/CTF/Domination/Gun Game no MVP.
 - [Vite: host, portas e proxy](https://vite.dev/config/server-options/)
 - [Rapier: character controller](https://rapier.rs/docs/user_guides/javascript/character_controller/)
 - [Socket.IO: recuperacao e necessidade de ressincronizacao](https://socket.io/docs/v4/connection-state-recovery/)
+- [Socket.IO: inicializacao do servidor](https://socket.io/docs/v4/server-initialization/)
+- [Socket.IO: opcoes de reconexao do cliente](https://socket.io/docs/v4/client-options/)
 - [Three.js: liberacao explicita de recursos](https://threejs.org/manual/en/how-to-dispose-of-objects.html)

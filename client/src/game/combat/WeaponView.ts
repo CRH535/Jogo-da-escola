@@ -34,7 +34,7 @@ export class WeaponView {
     this.root.add(this.flash); camera.add(this.root);
   }
   shot() { this.recoil = 0.035; this.flashTime = 0.055; }
-  update(delta: number, weapons: WeaponManager, alive: boolean) {
+  update(delta: number, weapons: Pick<WeaponManager, 'selected' | 'reloadTicks' | 'aiming'>, alive: boolean) {
     this.recoil = Math.max(0, this.recoil - delta * 0.35); this.flashTime = Math.max(0, this.flashTime - delta);
     this.root.visible = alive;
     const reload = weapons.reloadTicks > 0;

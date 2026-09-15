@@ -2,7 +2,7 @@
 
 Uma etapa so recebe [x] depois da implementacao, execucao, testes e registro dos
 arquivos e limitacoes. A prioridade e jogabilidade, colisao e performance.
-Escopo atual autorizado: Etapa 8. Nao iniciar a Etapa 9 neste turno.
+Escopo atual autorizado: Etapa 10. Nao iniciar a Etapa 11 neste turno.
 
 - [x] 1. Fundacao: workspaces, dependencias, Vite/React/Three, Node/Express,
   scripts, health via proxy, build, teste de navegador e documentacao inicial.
@@ -19,12 +19,12 @@ Escopo atual autorizado: Etapa 8. Nao iniciar a Etapa 9 neste turno.
   jogadores, cronometro, feed temporario e placar TAB ordenado.
 - [x] 7. Bots: navegacao primeiro, deteccao depois, combate depois;
   PATROL/SEARCH/CHASE/ATTACK/RESPAWN, perda de alvo, 1-7 bots, tres dificuldades.
-- [ ] 8. Partidas: FFA, countdown 3/2/1/GO com input bloqueado, 10 min ou
+- [x] 8. Partidas: FFA, countdown 3/2/1/GO com input bloqueado, 10 min ou
   30 eliminacoes, +100 por eliminacao, pausa offline, resultados e reinicio.
-- [ ] 9. Rede basica: Socket.IO e NetworkManager; handshake, dois navegadores,
+- [x] 9. Rede basica: Socket.IO e NetworkManager; handshake, dois navegadores,
   dois jogadores visiveis, inputs limitados, movimento autoritativo,
   previsao/reconciliacao, interpolacao, ping e reconexao. Sem combate ate passar.
-- [ ] 10. Gameplay online: disparos, cadencia, municao, HP, raycast, eliminacao,
+- [x] 10. Gameplay online: disparos, cadencia, municao, HP, raycast, eliminacao,
   respawn, placar, relogio e fim validados pelo servidor; testes de abuso.
 - [ ] 11. Lobby LAN: criar/entrar por endereco, nome/mapa/limite/modo,
   HOST/PRONTO/ping, restricao de inicio, copiar endereco com fallback,

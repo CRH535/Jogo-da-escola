@@ -3,15 +3,19 @@
 FPS de arena futurista para navegador desktop, com partidas rapidas e efeitos
 digitais sem violencia grafica. Projeto em desenvolvimento incremental.
 
-**Estado atual: Etapa 8 - partidas locais FFA.** JOGAR inicia partida com 1-7 bots,
+**Estado atual: Etapa 10 - combate multiplayer LAN.** JOGAR inicia partida com 1-7 bots,
 tres dificuldades, tres equipamentos, eliminacoes, respawn, feed e placar.
 TREINAMENTO com hologramas, exploracao livre, mapa, menus e backend preservados.
 Contagem inicial, limite de dez minutos/30 eliminacoes, resultado e revanche.
-Lobby e multiplayer ainda nao implementados.
+MULTIPLAYER conecta ate oito jogadores a uma arena compartilhada, com movimento
+autoritativo, avatares, previsao, interpolacao, ping e retomada de conexao.
+Combate online possui tres equipamentos, vida, eliminacao, respawn, placar e
+partida FFA controlados pelo servidor. Lobby/salas (Etapa 11) ainda nao implementados.
 
 JOGAR, MULTIPLAYER, TREINAMENTO, CONFIGURACOES, CREDITOS e SAIR abrem suas telas.
 O menu JOGAR salva nome, mapa, 1-7 bots e dificuldade e inicia a arena local.
-Criar/entrar em salas continuam desabilitados ate as etapas de multiplayer.
+MULTIPLAYER permite informar nome/endereco e CONECTAR. CRIAR PARTIDA permanece
+desabilitado: ainda nao existem salas separadas, host de lobby ou estado PRONTO.
 
 ## Requisitos e instalacao
 
@@ -99,7 +103,22 @@ Etapa 7 validada com 173 testes: 99 Node, 69 navegador e cinco build.
 Etapa 8 acrescenta testes de contagem, limites exatos, resultados imutaveis,
 precisao, bloqueio de acoes, pausa, revanche e fim com TAB aberto.
 Resultados novos estao no [registro da Etapa 8](docs/STAGE-8.md).
+Etapa 8 validada com 187 testes distintos: 108 Node, 74 navegador (em dois
+blocos, conforme o registro) e cinco build. Contagem e combate tambem conferidos
+no servidor de desenvolvimento em localhost:5173.
 Isso nao constitui benchmark de GPU, teste multiplayer ou gameplay touch.
+
+Etapa 9 validada com **212 testes distintos**: 121 Node, 85 navegador (regressao
+anterior + bloco LAN final) e seis build. Dois clientes reais, avatar remoto,
+movimento autoritativo, 150 ms de RTT simulado, retomada, limites e descarte.
+Detalhes, correcoes e arquivos em [Etapa 9](docs/STAGE-9.md). Teste em dois
+computadores fisicos continua pendente; nao e substituido por duas abas locais.
+
+Etapa 10 validada com **225 testes distintos**: 132 Node, 87 navegador em lotes
+e seis build. Combate real entre dois clientes, respawn, placar, fim e nova rodada.
+Um teste interrompido por HMR passou na reexecucao isolada do bloco completo;
+detalhes e arquivos em [Etapa 10](docs/STAGE-10.md). Nao executar build de shared
+simultaneamente a testes do Vite, pois a recompilacao recarrega a cena em teste.
 
 ## Jogar o treinamento (Etapa 5)
 
@@ -236,8 +255,9 @@ Restaurar padroes pede confirmacao e mantem nome do jogador, mapa, bots e dificu
 
 ## Acesso pela rede local agora
 
-Este procedimento entrega menus, exploracao, treinamento e bots locais;
-cada navegador possui sua propria sessao. Jogadores nao sao sincronizados.
+Menus, exploracao, treinamento e bots continuam locais. Em MULTIPLAYER, todos
+os clientes do mesmo servidor compartilham NEON FACILITY com movimento sincronizado.
+Esta e uma arena de movimentacao, ainda sem disparos, dano ou partida competitiva.
 
 ### Host em desenvolvimento
 
@@ -246,10 +266,15 @@ cada navegador possui sua propria sessao. Jogadores nao sao sincronizados.
    Ignore adaptadores desconectados, VPNs e interfaces virtuais.
 3. No outro computador, abra `http://IP_DO_HOST:5173`.
 4. Confirme a cena e o indicador `Servidor online`.
+5. Nos dois computadores, abra MULTIPLAYER, informe nomes diferentes e mantenha
+   o endereco sugerido (`http://IP_DO_HOST:5173` no convidado).
+6. Clique CONECTAR, aguarde CONECTADO e clique ENTRAR NA ARENA em cada navegador.
+   Use WASD/mouse, Espaco e Shift. TAB mostra eliminacoes/derrotas/pontos/ping.
 
-O frontend encaminha `/api` ao backend no host. Para abrir a interface e seu
-health por proxy, apenas **TCP 5173** precisa estar acessivel ao cliente.
-Para acessar a API diretamente, permita tambem **TCP 3000**.
+O frontend encaminha `/api` e `/socket.io` (WebSocket) ao backend no host.
+Usando o endereco sugerido, apenas **TCP 5173** precisa estar acessivel ao cliente.
+Para informar `http://IP_DO_HOST:3000` diretamente no formulario ou acessar a
+API sem o proxy, permita tambem **TCP 3000**. Nao existe porta UDP adicional.
 Os processos escutam em `0.0.0.0`; isso inclui todas as interfaces IPv4.
 
 ### Host com build, um unico endereco
@@ -262,8 +287,11 @@ npm start
 ```
 
 No outro computador, abra **http://IP_DO_HOST:3000**. O Express entrega
-`client/dist` e `/api/health` na mesma origem. Apenas **TCP 3000** e necessario.
+`client/dist`, `/api/health` e Socket.IO na mesma origem. Apenas **TCP 3000** e necessario.
 Frontend e backend continuam separados no codigo; Vite nao participa deste modo.
+Em ambos os computadores: MULTIPLAYER > nome > manter endereco sugerido >
+CONECTAR > ENTRAR NA ARENA. O HOST tambem deve abrir um navegador para jogar.
+O botao do menu nao inicia um processo Node: `npm start` precisa estar rodando.
 
 O servidor imprime enderecos LAN candidatos na inicializacao. Confirme o IP
 correto se houver varias placas. Nao e possivel comprovar uma segunda maquina
@@ -274,13 +302,52 @@ entrada do Windows Defender Firewall para Node/porta correspondente no perfil
 de rede privada. **Nenhuma regra de firewall e alterada automaticamente.**
 Nao e necessario abrir portas no roteador para uma LAN.
 
-### Multiplayer planejado
+### Verificar sincronizacao e conexao
 
-Nas Etapas 9-11, o HOST iniciara o servidor Node, criara uma sala no menu e
-os convidados usarao ENTRAR EM PARTIDA com `http://IP_DO_HOST:3000`.
-Socket.IO usara a porta TCP do servidor, sem uma porta UDP adicional.
-Salas, estados de pronto, combate e reconexao ainda nao existem nesta versao.
-O guia sera atualizado com o fluxo efetivamente validado quando forem implementados.
+1. Confirme dois jogadores no HUD/TAB. Os spawns sao diferentes; atravesse os
+   corredores ou a passagem central para encontrar o outro avatar identificado.
+2. Um jogador anda, corre, pula e gira. O outro deve ver seu movimento e orientacao.
+3. Abra ESC em um cliente: MENU LOCAL. O outro continua andando; o servidor nao pausa.
+4. DESCONECTAR remove o jogador e libera a vaga imediatamente.
+5. Uma queda breve mostra CONEXAO PERDIDA / TENTANDO RECONECTAR. O servidor reserva
+   o ID por dez segundos; a retomada exige novo clique em CONTINUAR, sem capturar
+   o mouse automaticamente. Quatro tentativas falhas levam a SERVIDOR INDISPONIVEL.
+6. Encerrar Node perde todas as sessoes. Reinicie e conecte novamente pelo menu.
+   Fechar somente o navegador de quem iniciou Node nao encerra o servidor.
+
+Se a conexao antiga ainda aguarda timeout no servidor, ha ate tres tentativas
+adicionais de retomada, espacadas em um segundo, sem criar outro jogador.
+
+O servidor rejeita versao incompatível, nome invalido, lotacao de oito jogadores,
+sequencias duplicadas, payloads invalidos e spam. Falha inicial de endereco/conexao
+mostra SERVIDOR NAO ENCONTRADO. Nao ha estado de partida ja iniciada sem lobby.
+Nomes nao sao unicos nem autenticados; use somente rede privada confiavel.
+Credencial de retomada fica apenas em memoria e nunca em localStorage/URL.
+HTTP/WS nao criptografa o trafego LAN. Nao exponha esse servidor na Internet.
+
+### Combate LAN (Etapa 10)
+
+1. Com um jogador, a arena aguarda adversario; e possivel explorar sem disparar.
+2. Ao conectar o segundo, o servidor inicia 3, 2, 1 e libera o FFA. Durante a
+   contagem, movimento/disparos ficam bloqueados. Clique em ENTRAR NA ARENA.
+3. Use clique esquerdo, R, 1/2/3 e mira secundaria do ARC-9. Municao, cadencia,
+   dispersao, alcance, paredes e dano sao resolvidos pelo servidor, nao pelo HUD.
+4. Cada eliminacao vale 100 pontos. A vitima retorna em tres segundos, com vida
+   e municao restauradas, em um spawn selecionado por distancia/visibilidade.
+5. ESC e troca de aba nao pausam a partida, recarga ou respawn. Um jogador no
+   menu local continua vulneravel; nao use a pausa como protecao.
+6. Dez minutos ou 30 eliminacoes encerram a partida. Os resultados sao comuns
+   aos clientes, com posicao, precisao e tempo; o mouse e liberado.
+7. Apos 15 segundos o servidor inicia outra rodada se ainda houver dois jogadores.
+   Clique novamente em ENTRAR NA ARENA. Nenhum cliente pode reiniciar a partida
+   dos demais. Com menos de dois, volta a aguardar adversario.
+
+Ainda existe uma unica arena por servidor, sem host de sala, PRONTO ou bots online.
+Quem conecta durante uma rodada entra nela; durante o resultado, aguarda a proxima.
+Reconexao breve preserva vida, municao e pontuacao. O protocolo e versao 2:
+cliente e servidor antigos precisam ser atualizados juntos.
+Disparos usam a posicao atual no servidor, sem rewind de latencia. Efeitos/sons
+sao confirmados pelo servidor, portanto o atraso fica perceptivel em conexoes lentas.
 
 ## Jogar contra bots (Etapa 7)
 
@@ -351,8 +418,8 @@ ou preferencia da aplicacao permite alterar os limites de producao.
 
 ## Organizacao
 
-`client` contem React, renderer e acesso HTTP. `server` contem Express e
-configuracao. `shared` contem versao, contrato de health, dados do mapa e fabrica
+`client` contem React, renderer e acesso HTTP/Socket.IO. `server` contem Express,
+rede e simulacao autoritativa. `shared` contem versao, contratos, dados do mapa e fabrica
 do mundo fisico sem depender do DOM ou da renderizacao.
 No cliente, `ui` organiza telas e controles; `settings` organiza validacao,
 persistencia e fullscreen. A navegacao fica em `app` e HTTP em `network`.
@@ -361,7 +428,7 @@ persistencia e fullscreen. A navegacao fica em `app` e HTTP em `network`.
 `shared/src/physics` instancia os colisores com Rapier. `shared/src/simulation`
 contem movimento e passo fixo, sem DOM/Three. `client/src/game/player` contem
 InputManager, camera e executor local. Dados, fisica e simulacao usam subpaths
-separados; o motor so carrega ao abrir inspecao, exploracao, treinamento ou bots.
+separados; o motor so carrega ao abrir inspecao, exploracao, treinamento, bots ou LAN.
 `shared/src/gameplay` contem catalogo, inventario, vida, layout dos alvos e
 executor local de treinamento, sem Three/DOM. `client/src/game/combat` adapta
 eventos para modelos 3D e pools; `client/src/audio` controla sons sinteticos.
@@ -375,8 +442,12 @@ sem misturar a IA com componentes React. Geometrias/materiais sao reutilizados.
 `shared/src/match` organiza regras FFA, relogios e resultado imutavel sem DOM,
 Three ou Rapier. `BotSession` aplica a politica quando configurada; o executor
 da aplicacao sempre usa FFA padrao. `client/src/ui/match` exibe o resultado.
+`shared/src/network` define eventos, validadores e buffer de interpolacao.
+`server/src/network` possui MovementArena, limites e transporte Socket.IO.
+`client/src/network/NetworkManager` e o unico dono do socket; `game/network`
+reconcilia o jogador e renderiza avatares. A UI recebe dados limitados a 10 Hz.
 `docs` registra arquitetura e criterios das 14 etapas. `tests/browser` valida a
-interface e cenas; `server/test` cobre HTTP e `shared/test` cobre mapa/fisica/movimento/gameplay.
+interface e cenas; `server/test` cobre HTTP/rede e `shared/test` cobre contratos e simulacao.
 
 - [Arquitetura, dependencias e riscos](docs/ARCHITECTURE.md)
 - [Checklist das etapas e do MVP](docs/CHECKLIST.md)
@@ -388,11 +459,19 @@ interface e cenas; `server/test` cobre HTTP e `shared/test` cobre mapa/fisica/mo
 - [Registro da Etapa 6](docs/STAGE-6.md)
 - [Registro da Etapa 7](docs/STAGE-7.md)
 - [Registro da Etapa 8](docs/STAGE-8.md)
+- [Registro da Etapa 9](docs/STAGE-9.md)
+- [Registro da Etapa 10](docs/STAGE-10.md)
 
 ## Problemas conhecidos
 
-- Partidas locais FFA funcionam; multiplayer e as Etapas 9-14 ainda estao pendentes.
+- Partidas locais FFA e combate LAN implementados; Etapas 11-14 estao pendentes.
   Alvos estaticos do treinamento nao sao bots e o treinamento nao termina sozinho.
+- LAN possui uma arena por processo e oito vagas. Avatares nao
+  bloqueiam fisicamente outros jogadores nesta etapa; colisoes com o mapa sao
+  autoritativas. Sem lobby, prontidao, host de sala, bots online ou chat.
+- Interpolacao remota adiciona 100 ms; extrapolacao limitada a 33 ms. Latencia alta,
+  quedas longas ou maquina sobrecarregada podem causar correcoes visiveis. Fila de
+  inputs excessiva e recusada; nao ha promessa de desempenho WAN ou anti-cheat completo.
 - O spawn fixo do treinamento foi preservado. Contra bots, o spawn e escolhido
   por distancia/visibilidade, mas uma arena ocupada pode nao oferecer cobertura
   completa. Nao existe invulnerabilidade artificial de respawn.
@@ -409,7 +488,8 @@ interface e cenas; `server/test` cobre HTTP e `shared/test` cobre mapa/fisica/mo
 - Apos muitas entradas/saidas rapidas, o navegador pode limitar novas capturas
   do mouse. A mensagem informa a recusa: aguarde alguns segundos e clique
   novamente em ENTRAR NA ARENA ou CONTINUAR. Nao ha recaptura automatica.
-- Servidor desligado nao impede a cena; status e reavaliado a cada 5 segundos.
+- Servidor desligado nao impede modos locais; health e reavaliado a cada 5 segundos.
+  Arena LAN exige servidor ativo e mostra falhas/retomada na propria tela.
 - Portas ocupadas causam erro explicito. O processo nao encerra programas alheios
   nem troca silenciosamente a porta. Configure SERVER_PORT/CLIENT_PORT na raiz.
   Se definir API_PROXY_TARGET, ajuste-o tambem ao mudar a porta do backend.

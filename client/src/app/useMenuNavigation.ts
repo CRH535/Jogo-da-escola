@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-const screens = ['menu', 'play', 'map', 'arena', 'range', 'bots', 'multiplayer', 'training', 'settings', 'credits', 'exit'] as const;
+const screens = ['menu', 'play', 'map', 'arena', 'range', 'bots', 'lan', 'multiplayer', 'training', 'settings', 'credits', 'exit'] as const;
 export type MenuScreen = typeof screens[number];
 
 function currentScreen(): MenuScreen {
@@ -32,7 +32,7 @@ export function useMenuNavigation() {
   }, [screen]);
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
-      if (screen === 'arena' || screen === 'range' || screen === 'bots') return;
+      if (screen === 'arena' || screen === 'range' || screen === 'bots' || screen === 'lan') return;
       if (event.key !== 'Escape' || event.defaultPrevented || document.querySelector('dialog[open]') || document.fullscreenElement) return;
       if (screen !== 'menu') { event.preventDefault(); navigate(screen === 'map' ? 'play' : 'menu'); }
     };

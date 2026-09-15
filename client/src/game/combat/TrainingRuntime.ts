@@ -13,7 +13,7 @@ import { WeaponView } from './WeaponView';
 import { createTrainingObjects } from './createTrainingObjects';
 import { createBotObjects } from './createBotObjects';
 
-export interface TrainingReadout extends CombatSnapshot { hit: boolean; damaged: boolean; hud: HudSnapshot; match?: MatchSnapshot }
+export interface TrainingReadout extends CombatSnapshot { hit: boolean; damaged: boolean; hud: HudSnapshot; match?: MatchSnapshot; waiting?: boolean; nextRoundSeconds?: number }
 export class TrainingRuntime {
   readonly session: TrainingSession | BotSession;
   private audio: AudioManager;

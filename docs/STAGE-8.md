@@ -1,6 +1,6 @@
 # Etapa 8 - partidas locais FFA
 
-Implementacao em 14/09/2026. Validacao final em andamento.
+Implementacao e validacao concluidas em 14/09/2026.
 Escopo: Etapa 8, sem iniciar rede/multiplayer da Etapa 9.
 
 ## Implementado
@@ -60,10 +60,34 @@ Mudancas anteriores das Etapas 5-7 no worktree foram preservadas.
 | `npm run typecheck`, integracao | Tres workspaces aprovados |
 | `node --test shared/test/match.test.mjs` | Nove testes aprovados |
 | Bots + contagem no Chrome | 11 aprovados na primeira rodada; quatro falhas de carga da fixture corrigidas |
-| Cinco testes novos de partidas no Chrome | Aprovados apos correcao da fixture; layout final em revisao |
+| Cinco testes novos de partidas no Chrome | Aprovados; capturas finais desktop/mobile inspecionadas |
 | `npm run check`, final | Build e 108 testes Node aprovados (99 anteriores + nove novos) |
-| Regressao completa de navegador | Em andamento, 74 casos |
-| Build servido/HTTP | Pendente |
+| Regressao de navegador | 74 casos distintos aprovados, em dois blocos descritos abaixo |
+| `npm run test:build`, Chrome | Build e cinco testes aprovados, 24.2 s |
+| HTTP local | Frontend 5173, proxy health 5173 e health direto 3000 retornaram 200 |
+| Sessao real em localhost:5173 | Contagem, 10:00, disparos/100 pontos, retorno ao menu e zero erros de console |
+| `git diff --check` | Sem erros de whitespace |
+
+Total: 187 testes distintos (108 Node + 74 navegador + cinco build).
+Subsuites e repeticoes nao sao somadas ao total. A rodada completa anterior
+foi interrompida depois de 45 aprovacoes, sem relatorio final. Foram mantidos
+os 44 casos de bots/fundacao/gameplay/HUD/mapa registrados em
+`.runtime/stage8-e2e.log`; o bloco inteiro de partidas/menu/player foi executado
+novamente e terminou com 30 aprovacoes (2.3 min), em
+`.runtime/stage8-e2e-final.log`. O teste de contagem repetido conta apenas uma vez.
+Isso cobre os 74 casos da suite sem afirmar que a rodada interrompida terminou.
+
+Build compilado conferiu tambem que parametros `durationTicks` e
+`eliminationLimit` na URL nao alteram as regras: 10:00 e partida ainda ativa
+apos uma eliminacao. Log: `.runtime/stage8-build-test.log`.
+Capturas de resultado: `test-results/browser/match-*/`; capturas do acesso
+normal: `.runtime/stage8-local-countdown.png` e `.runtime/stage8-local-playing.png`.
+Logs e capturas sao ignorados pelo Git. Nenhum resultado curto de fixture foi
+apresentado como uma partida de dez minutos jogada em tempo real.
+
+`npm run dev` iniciado e verificado em http://localhost:5173, com backend 3000.
+Nenhuma regra de firewall foi alterada. O comando conjunto informou zero erros
+no watcher TypeScript. Etapa 9 nao iniciada.
 
 ## Correcoes encontradas
 

@@ -11,6 +11,7 @@ Esta lista nao atribui uma licenca ao codigo autoral de NEON STRIKE.
 | ngraph.path | MIT | Busca A* dos bots |
 | lucide-react | ISC | Icones da interface |
 | Express | MIT | Servidor |
+| Socket.IO / Socket.IO Client | MIT | Transporte LAN e reconexao |
 | Vite e @vitejs/plugin-react | MIT | Ferramentas |
 | TypeScript | Apache-2.0 | Ferramentas |
 | tsx | MIT | Ferramentas |
@@ -32,3 +33,7 @@ Nenhuma biblioteca nova foi adicionada para combate ou audio.
 Na Etapa 7, ngraph.graph 20.1.2 e ngraph.path 1.6.1 fornecem o grafo e A*.
 ngraph.events e uma dependencia transitiva BSD-3-Clause. Os modelos dos bots, visores,
 animacao de passos e texturas de identificacao sao originais, criados em codigo.
+
+Na Etapa 9, socket.io 4.8.3 e socket.io-client 4.8.3 fornecem transporte WebSocket
+com eventos e tentativas de reconexao. Os avatares remotos e suas texturas de
+nome sao originais e compartilham geometrias; nao ha assets externos novos.

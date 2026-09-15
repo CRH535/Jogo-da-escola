@@ -1,6 +1,7 @@
 import RAPIER from '@dimforge/rapier3d-compat';
 import { rampVertices } from '../maps/geometry.js';
 import type { ArenaMap } from '../maps/types.js';
+export const PhysicsRay = RAPIER.Ray;
 
 let initialization: Promise<void> | undefined;
 

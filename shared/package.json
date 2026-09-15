@@ -4,6 +4,10 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./network": {
+      "types": "./dist/network/protocol.d.ts",
+      "default": "./dist/network/protocol.js"
+    },
     "./match": {
       "types": "./dist/match/MatchManager.d.ts",
       "default": "./dist/match/MatchManager.js"

@@ -8,6 +8,9 @@ import { createArenaEnvironment } from '../../maps/createArenaEnvironment';
 import type { Preferences } from '../../settings/preferences';
 import { InputManager } from './InputManager';
 import { TrainingRuntime, type TrainingReadout } from '../combat/TrainingRuntime';
+import { NetworkRuntime } from '../network/NetworkRuntime';
+import { NetworkCombatPresentation } from '../network/NetworkCombatPresentation';
+import type { NetworkOptions, NetworkReadout } from '../../network/NetworkManager';
 
 export interface PlayerDebug {
   x: number; y: number; z: number; speed: number; grounded: boolean;
@@ -21,9 +24,10 @@ export interface PlayerSceneCallbacks {
   onDebug: (debug: PlayerDebug) => void;
   onCombat?: (snapshot: TrainingReadout) => void;
   onScoreboard?: (open: boolean) => void;
+  onNetwork?: (snapshot: NetworkReadout) => void;
 }
 
-export function createPlayerScene(container: HTMLElement, physics: MapWorld, initialPreferences: Preferences, callbacks: PlayerSceneCallbacks, trainingMode = false, bots?: BotOptions, rules?: Readonly<MatchRules>) {
+export function createPlayerScene(container: HTMLElement, physics: MapWorld, initialPreferences: Preferences, callbacks: PlayerSceneCallbacks, trainingMode = false, bots?: BotOptions, rules?: Readonly<MatchRules>, networkOptions?: NetworkOptions) {
   let preferences = initialPreferences;
   const renderer = new WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
   renderer.domElement.setAttribute('aria-label', 'Arena em primeira pessoa');
@@ -34,7 +38,7 @@ export function createPlayerScene(container: HTMLElement, physics: MapWorld, ini
   camera.rotation.order = 'YXZ';
   environment.scene.add(camera);
   const spawn = NEON_FACILITY.spawns[7]!;
-  const player = createPlayerController(physics.world, NEON_FACILITY, spawn);
+  const player = createPlayerController(physics.world, NEON_FACILITY, spawn, !networkOptions);
   const clock = new FixedStep();
   let active = false;
   let failed = false;
@@ -47,26 +51,34 @@ export function createPlayerScene(container: HTMLElement, physics: MapWorld, ini
   let bobPhase = 0;
   let bobAmount = 0;
   let training: TrainingRuntime | null = null;
+  let network: NetworkRuntime | null = null;
+  let networkCombat: NetworkCombatPresentation | null = null;
   const input = new InputManager(renderer.domElement, {
     onLock(locked) {
       active = locked && !failed;
       player.clearInput();
       if (!active) training?.pause();
+      network?.setActive(active);
       clock.reset(); lastTime = 0;
       emitDebug();
       callbacks.onLock(active);
     },
     onError: callbacks.onInputError,
-    onScoreboard: (open) => { if (trainingMode || bots) callbacks.onScoreboard?.(open); },
+    onScoreboard: (open) => { if (trainingMode || bots || networkOptions) callbacks.onScoreboard?.(open); },
   });
   input.yaw = spawn.yaw;
   input.sensitivity = preferences.controls.sensitivity;
   if ((trainingMode || bots) && callbacks.onCombat) training = new TrainingRuntime(physics, player, environment.scene, camera, input, preferences, callbacks.onCombat, bots, rules);
+  if (networkOptions && callbacks.onNetwork) {
+    networkCombat = new NetworkCombatPresentation(environment.scene, camera, preferences);
+    network = new NetworkRuntime(physics, player, environment.scene, input, networkOptions, callbacks.onNetwork, input.release, networkCombat, callbacks.onCombat);
+  }
   renderer.shadowMap.type = PCFShadowMap;
   renderer.shadowMap.autoUpdate = false;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   function step(combat = true) {
+    if (combat && network) { network.step(); return; }
     if (combat && training && !training.playing) {
       input.clearGameplay(); player.clearInput(); training.step(); return;
     }
@@ -85,7 +97,7 @@ export function createPlayerScene(container: HTMLElement, physics: MapWorld, ini
   function resize() {
     const width = Math.max(1, container.clientWidth); const height = Math.max(1, container.clientHeight);
     const video = preferences.video;
-    camera.aspect = width / height; camera.fov = training?.aiming ? video.fov * 0.65 : video.fov; camera.updateProjectionMatrix();
+    camera.aspect = width / height; camera.fov = training?.aiming || networkCombat?.aiming ? video.fov * 0.65 : video.fov; camera.updateProjectionMatrix();
     let ratio = Math.min(window.devicePixelRatio, { low: 0.75, medium: 1, high: 1.5 }[video.quality]);
     if (video.resolution !== 'native') {
       const [targetWidth, targetHeight] = video.resolution.split('x').map(Number);
@@ -108,10 +120,12 @@ export function createPlayerScene(container: HTMLElement, physics: MapWorld, ini
       previous.y + (state.y - previous.y) * alpha + MOVEMENT.eyeHeight + Math.sin(bobPhase) * bobAmount,
       previous.z + (state.z - previous.z) * alpha,
     );
+    if (network) { camera.position.x += network.offset.x; camera.position.y += network.offset.y; camera.position.z += network.offset.z; }
     camera.rotation.set(input.pitch, input.yaw, 0, 'YXZ');
-    const fov = training?.aiming ? preferences.video.fov * 0.65 : preferences.video.fov;
+    const fov = training?.aiming || networkCombat?.aiming ? preferences.video.fov * 0.65 : preferences.video.fov;
     if (camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
     training?.update(active && training.playing ? delta : 0, alpha);
+    networkCombat?.update(delta);
   }
   function emitDebug() {
     if (!import.meta.env.DEV || !debugEnabled) return;
@@ -126,6 +140,7 @@ export function createPlayerScene(container: HTMLElement, physics: MapWorld, ini
   function frame(time: number) {
     const delta = lastTime ? Math.max(0, Math.min(0.1, (time - lastTime) / 1000)) : 0;
     lastTime = time;
+    network?.update(time, delta);
     if (active) clock.advance(delta, step);
     updateCamera(delta);
     const interval = preferences.video.maxFps ? 1000 / preferences.video.maxFps : 0;
@@ -153,17 +168,17 @@ export function createPlayerScene(container: HTMLElement, physics: MapWorld, ini
   renderer.domElement.addEventListener('webglcontextlost', contextLost);
   resize(); updateCamera(0); renderer.render(environment.scene, camera); visibilityChanged();
   return {
-    resume: () => { if (!failed && !training?.ended) { training?.unlockAudio(); input.request(); } },
+    resume: () => { if (!failed && !training?.ended && !network?.ended && (!network || network.connected)) { training?.unlockAudio(); networkCombat?.unlockAudio(); input.request(); } },
     pause: input.release,
-    restart() { input.clear(); player.reset(); training?.reset(); input.yaw = spawn.yaw; input.pitch = 0; bobAmount = 0; bobPhase = 0; clock.reset(); step(false); step(false); updateCamera(0); },
-    setPreferences(next: Preferences) { preferences = next; input.sensitivity = next.controls.sensitivity; training?.setPreferences(next); resize(); },
+    restart() { if (network) return; input.clear(); player.reset(); training?.reset(); input.yaw = spawn.yaw; input.pitch = 0; bobAmount = 0; bobPhase = 0; clock.reset(); step(false); step(false); updateCamera(0); },
+    setPreferences(next: Preferences) { preferences = next; input.sensitivity = next.controls.sensitivity; training?.setPreferences(next); networkCombat?.setPreferences(next); resize(); },
     setDebug(enabled: boolean) { debugEnabled = import.meta.env.DEV && enabled; debugTime = performance.now(); renderedFrames = 0; emitDebug(); },
     dispose() {
       renderer.setAnimationLoop(null);
       observer.disconnect(); input.dispose();
       document.removeEventListener('visibilitychange', visibilityChanged);
       renderer.domElement.removeEventListener('webglcontextlost', contextLost);
-      training?.dispose(); player.dispose(); environment.dispose();
+      network?.dispose(); training?.dispose(); player.dispose(); environment.dispose();
       renderer.dispose(); renderer.forceContextLoss(); renderer.domElement.remove();
     },
   };

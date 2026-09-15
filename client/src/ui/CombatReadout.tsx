@@ -7,11 +7,12 @@ import './hud/hud.css';
 
 export function CombatReadout({ state, playing, scoreboard }: { state: TrainingReadout; playing: boolean; scoreboard: boolean }) {
   const lowAmmo = state.magazine <= Math.ceil(state.capacity * 0.2);
-  return <div className="combat-readout" aria-label={state.hud.mode === 'bots' ? 'Estado do combate' : 'Estado do treinamento'} data-hp={state.hp} data-magazine={state.magazine}
+  return <div className="combat-readout" aria-label={state.hud.mode === 'network' ? 'Estado do combate online' : state.hud.mode === 'bots' ? 'Estado do combate' : 'Estado do treinamento'} data-hp={state.hp} data-magazine={state.magazine}
     data-reserve={state.reserve} data-selected={state.selected} data-hits={state.hits} data-eliminations={state.eliminations} data-reload={state.reload} data-aiming={state.aiming}
     data-score={state.hud.score} data-deaths={state.hud.deaths} data-time={state.hud.clock.seconds} data-match-state={state.match?.state}>
     {playing && <>
       <HudSummary hud={state.hud} />
+      {state.waiting && !scoreboard && <div className="match-countdown" role="status"><span>AGUARDANDO ADVERSÁRIO</span></div>}
       {!scoreboard && state.match && (state.match.countdown > 0 || state.match.go) && <div className="match-countdown" role="status" aria-label="Contagem inicial">
         <span>FREE FOR ALL</span><strong>{state.match.countdown || 'GO!'}</strong>
       </div>}

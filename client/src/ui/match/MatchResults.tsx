@@ -4,25 +4,25 @@ import { formatDuration } from '@neon-strike/shared/hud';
 import { ScoreTable } from '../hud/Scoreboard';
 import './match.css';
 
-export function MatchResults({ result, onAgain, onMenu }: { result: Readonly<MatchResult>; onAgain: () => void; onMenu: () => void }) {
+export function MatchResults({ result, onAgain, onMenu, nextRoundSeconds }: { result: Readonly<MatchResult>; onAgain: () => void; onMenu: () => void; nextRoundSeconds?: number | undefined }) {
   const position = result.players.findIndex((row) => row.local);
-  const player = result.players[position]!;
+  const player = result.players[position] ?? { id: '', eliminations: 0, deaths: 0, score: 0, hits: 0, projectiles: 0 };
   const won = result.winnerId === player.id;
-  return <section className="match-results" aria-label="Resultado da partida" data-outcome={won ? 'victory' : 'defeat'}>
+  return <section className="match-results" aria-label="Resultado da partida" data-outcome={position < 0 ? 'spectator' : won ? 'victory' : 'defeat'}>
     <header><p className="eyebrow">NEON FACILITY / FREE FOR ALL</p>
-      <h2><Trophy aria-hidden="true" />{won ? 'VITÓRIA' : 'DERROTA'}</h2>
+      <h2><Trophy aria-hidden="true" />{position < 0 ? 'PARTIDA ENCERRADA' : won ? 'VITÓRIA' : 'DERROTA'}</h2>
       <p className="match-winner">{result.players[0]?.name} <span>{result.reason === 'time' ? 'TEMPO ESGOTADO' : 'LIMITE DE ELIMINAÇÕES'}</span></p>
     </header>
     <dl className="match-metrics">
       {[
-        ['POSIÇÃO', `${position + 1} / ${result.players.length}`], ['ELIMINAÇÕES', player.eliminations],
+        ['POSIÇÃO', position < 0 ? '--' : `${position + 1} / ${result.players.length}`], ['ELIMINAÇÕES', player.eliminations],
         ['DERROTAS', player.deaths], ['PONTUAÇÃO', player.score],
         ['PRECISÃO', `${accuracyPercent(player.hits, player.projectiles)}%`], ['TEMPO', formatDuration(result.elapsedSeconds)],
       ].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
     </dl>
-    <ScoreTable players={result.players} mode="bots" />
+    <ScoreTable players={result.players} mode={nextRoundSeconds === undefined ? 'bots' : 'network'} />
     <div className="match-actions">
-      <button className="button primary" autoFocus onClick={onAgain}><RotateCcw aria-hidden="true" />JOGAR NOVAMENTE</button>
+      <button className="button primary" autoFocus disabled={nextRoundSeconds !== undefined} onClick={onAgain}><RotateCcw aria-hidden="true" />{nextRoundSeconds === undefined ? 'JOGAR NOVAMENTE' : `PRÓXIMA PARTIDA: ${nextRoundSeconds}`}</button>
       <button className="button secondary" onClick={onMenu}><LogOut aria-hidden="true" />MENU PRINCIPAL</button>
     </div>
   </section>;

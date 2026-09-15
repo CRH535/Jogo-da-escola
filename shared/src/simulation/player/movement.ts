@@ -10,9 +10,10 @@ export const MOVEMENT = {
 export interface MovementInput { forward: number; right: number; yaw: number; sprint: boolean; jump: boolean }
 export interface PlayerPose { x: number; y: number; z: number }
 export interface PlayerState extends PlayerPose { vx: number; vy: number; vz: number; yaw: number; grounded: boolean }
+export interface PlayerCheckpoint extends PlayerState { jumpHeld: boolean }
 const finiteAxis = (value: number) => Number.isFinite(value) ? Math.max(-1, Math.min(1, value)) : 0;
 
-export function createPlayerController(world: RAPIER.World, map: ArenaMap, spawn: SpawnPoint) {
+export function createPlayerController(world: RAPIER.World, map: ArenaMap, spawn: SpawnPoint, collidePlayers = true) {
   const body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased());
   const collider = world.createCollider(RAPIER.ColliderDesc.capsule(MOVEMENT.height / 2 - MOVEMENT.radius, MOVEMENT.radius), body);
   const controller = world.createCharacterController(MOVEMENT.skin);
@@ -24,7 +25,7 @@ export function createPlayerController(world: RAPIER.World, map: ArenaMap, spawn
   const previous: PlayerPose = { x: 0, y: 0, z: 0 };
   const desired = { x: 0, y: 0, z: 0 };
   const translation = { x: 0, y: 0, z: 0 };
-  const solidOnly = (candidate: RAPIER.Collider) => !candidate.isSensor();
+  const solidOnly = (candidate: RAPIER.Collider) => !candidate.isSensor() && (collidePlayers || !candidate.parent()?.isKinematic());
   let jumpHeld = false;
   let disposed = false;
   let recoveries = 0;
@@ -91,6 +92,16 @@ export function createPlayerController(world: RAPIER.World, map: ArenaMap, spawn
   }
   return {
     state, previous, body, collider, beforeStep, afterStep, reset,
+    checkpoint: (): PlayerCheckpoint => ({ ...state, jumpHeld }),
+    get jumpHeld() { return jumpHeld; },
+    restore(checkpoint: PlayerCheckpoint) {
+      const { x, y, z, vx, vy, vz, yaw, grounded } = checkpoint;
+      Object.assign(state, { x, y, z, vx, vy, vz, yaw, grounded }); jumpHeld = checkpoint.jumpHeld;
+      Object.assign(previous, { x: state.x, y: state.y, z: state.z });
+      body.setTranslation({ x: state.x, y: state.y + MOVEMENT.height / 2, z: state.z }, true);
+      body.setNextKinematicTranslation(body.translation());
+      world.propagateModifiedBodyPositionsToColliders(); world.updateSceneQueries();
+    },
     get recoveries() { return recoveries; },
     clearInput() { state.vx = 0; state.vz = 0; jumpHeld = false; },
     dispose() {

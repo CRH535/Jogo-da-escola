@@ -4,6 +4,7 @@ import { networkInterfaces } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { readServerConfig } from './config/environment.js';
 import { createApp } from './http/app.js';
+import { createMovementNetwork } from './network/createMovementNetwork.js';
 
 const environmentFile = fileURLToPath(new URL('../../.env', import.meta.url));
 if (existsSync(environmentFile)) process.loadEnvFile(environmentFile);
@@ -11,6 +12,7 @@ if (existsSync(environmentFile)) process.loadEnvFile(environmentFile);
 const config = readServerConfig(process.env);
 const clientDirectory = fileURLToPath(new URL('../../client/dist/', import.meta.url));
 const server = createServer(createApp({ clientDirectory }));
+const network = await createMovementNetwork(server);
 
 server.on('error', (error: NodeJS.ErrnoException) => {
   const message = error.code === 'EADDRINUSE'
@@ -18,6 +20,7 @@ server.on('error', (error: NodeJS.ErrnoException) => {
     : error.message;
   console.error(`[SERVER] ${message}`);
   process.exitCode = 1;
+  void network.close();
 });
 
 server.listen(config.port, config.host, () => {
@@ -36,9 +39,10 @@ function shutdown() {
   if (closing) return;
   closing = true;
   console.info('[SERVER] Shutting down');
-  server.close((error) => {
+  void network.close().then(() => {
     clearTimeout(timeout);
-    if (error) process.exitCode = 1;
+  }).catch((error: unknown) => {
+    clearTimeout(timeout); console.error('[SERVER] Shutdown failed', error); process.exitCode = 1;
   });
   const timeout = setTimeout(() => {
     server.closeAllConnections();

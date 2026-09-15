@@ -7,7 +7,9 @@ import { MainMenu } from '../ui/MainMenu';
 import { PlayScreen } from '../ui/PlayScreen';
 import { MapScreen } from '../ui/MapScreen';
 import { PlayerScreen } from '../ui/PlayerScreen';
-import { CreditsScreen, ExitScreen, MultiplayerScreen, TrainingScreen } from '../ui/InformationScreens';
+import { CreditsScreen, ExitScreen, TrainingScreen } from '../ui/InformationScreens';
+import { MultiplayerScreen } from '../ui/network/MultiplayerScreen';
+import type { NetworkOptions } from '../network/NetworkManager';
 import { SettingsScreen } from '../ui/settings/SettingsScreen';
 import { useMenuNavigation } from './useMenuNavigation';
 import { useServerStatus } from './useServerStatus';
@@ -23,12 +25,15 @@ const rendererLabels = {
 
 export function App() {
   const [rendererStatus, setRendererStatus] = useState<RendererStatus>('loading');
+  const [network, setNetwork] = useState<NetworkOptions | null>(null);
   const serverStatus = useServerStatus();
   const settings = usePreferences();
   const { preferences, update, saved, resetSettings } = settings;
   const { screen, navigate } = useMenuNavigation();
   const onBack = () => navigate('menu');
   if (screen === 'map') return <MapScreen video={preferences.video} onBack={() => navigate('play')} />;
+  if (screen === 'lan' && network) return <PlayerScreen key="lan" settings={settings} network={network}
+    onBack={() => { setNetwork(null); navigate('multiplayer'); }} onMenu={onBack} />;
   if (screen === 'arena' || screen === 'range' || screen === 'bots') return <PlayerScreen key={screen} training={screen === 'range'} bots={screen === 'bots'} settings={settings} onBack={() => navigate(screen === 'range' ? 'training' : 'play')} onMenu={onBack} />;
   return <div className="game-shell">
     <SceneViewport onStatus={setRendererStatus} video={preferences.video} />
@@ -44,7 +49,8 @@ export function App() {
       {screen === 'menu' && <MainMenu navigate={navigate} />}
       {screen === 'play' && <PlayScreen preferences={preferences} update={update} onBack={onBack} onMap={() => navigate('map')} onExplore={() => navigate('arena')} onStart={() => navigate('bots')} />}
       {screen === 'settings' && <SettingsScreen preferences={preferences} update={update} saved={saved} resetSettings={resetSettings} onBack={onBack} />}
-      {screen === 'multiplayer' && <MultiplayerScreen onBack={onBack} />}
+      {(screen === 'multiplayer' || screen === 'lan') && <MultiplayerScreen preferences={preferences} update={update} onBack={onBack}
+        onConnect={(options) => { setNetwork(options); navigate('lan'); }} />}
       {screen === 'training' && <TrainingScreen onBack={onBack} onStart={() => navigate('range')} />}
       {screen === 'credits' && <CreditsScreen onBack={onBack} />}
       {screen === 'exit' && <ExitScreen onBack={onBack} />}
