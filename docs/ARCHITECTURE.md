@@ -500,11 +500,46 @@ UI permanece ate 10 Hz, inputs 30 pacotes/s, snapshots 20 Hz. Sem biblioteca nov
 Disparos usam o mundo atual no servidor; rewind de latencia permanece fora desta
 etapa. Avatares mortos desaparecem; o menu local nao concede invulnerabilidade.
 
-## Lobby (Etapa 11, planejado)
+## Lobby (Etapa 11)
 
-Lobby atribuira host e regras por sala sobre as identidades da Etapa 9.
-Saida explicita do host encerrara a sala; queda breve reservara uma janela limitada
-de retomada antes de encerrar e avisar os demais. Nunca migrar host silenciosamente.
+`RoomRegistry` limita quatro salas por processo, incluindo alocacoes pendentes.
+Cada `Room` possui uma CombatArena/Rapier independente, configuracao imutavel,
+host atribuido pelo servidor e conjunto de participantes prontos. Codigos aleatorios
+de oito caracteres identificam salas, nunca credenciais de autenticacao.
+
+O namespace Socket.IO `/rooms` usa protocolo de rede 3. Auth recebe RoomRequest
+tipado para criar ou entrar; sem codigo so entra se houver uma unica sala. A
+retomada envia codigo e token privados em memoria, sem recriar a sala. Novos
+participantes sao recusados apos inicio, mas uma sessao reservada pode reconectar.
+Capacidade 2-8 inclui reservas desconectadas e libera a vaga ao expirar.
+
+Eventos `lobby:ready/start/return` exigem epoch e ID da sala do proprio socket.
+Servidor valida host, dois conectados, prontidao configurada, fase e limites.
+Negativas de permissao/prontidao nao desconectam; payloads adulterados e spam sim.
+Sockets recebem apenas snapshots da sala em que foram admitidos. Nunca e aceito
+um roomId do cliente como destino arbitrario de broadcast ou mutacao.
+
+CombatArena em modo controlado pelo lobby nao inicia rodadas automaticamente e
+nao aceita movimentacao no lobby. Depois de MATCH_END, qualquer participante pode
+retornar a sala ao lobby; tambem ocorre em 900 ticks. Prontidao e equipamentos
+resetados; so o host inicia novamente. Regras de combate foram preservadas.
+
+Saida explicita do host encerra e libera a sala, emitindo ROOM_CLOSED antes de
+desconectar os convidados. Queda breve reserva identidade e host por dez segundos;
+expiracao encerra a sala. Nao ha migracao. Saida de convidado nao encerra outras
+sessoes. Descarte impede que alocacao assincrona reabra sala depois de shutdown.
+
+`MultiplayerScreen` coleta configuracao/endereco. `NetworkManager` escolhe o
+namespace e envia eventos; nenhum componente manipula Socket.IO. `LobbyScreen`
+mostra participantes/ping/status, prontidao e endereco detectado no servidor.
+Interfaces IPv4 privadas sao priorizadas e selecionaveis. Clipboard sem permissao
+seleciona o campo e informa a falha; colar URL com `?room=CODIGO` resolve destino.
+Esquemas estranhos, credenciais em URL e parametros inesperados sao recusados.
+
+O executor sem lobby do namespace raiz foi preservado para regressao isolada das
+Etapas 9-10. A aplicacao padrao usa `/rooms`; a fixture Vite `network.html` injeta
+`App rooms={false}` somente nos testes antigos, sem URL/localStorage que desative
+autorizacao de uma sala. Namespace raiz nunca acessa estados de salas.
 
 Estados previstos: MENU, LOBBY, LOADING, COUNTDOWN, PLAYING, ROUND_END,
 MATCH_END, PAUSED e DISCONNECTED. Apenas o servidor muda estados da partida

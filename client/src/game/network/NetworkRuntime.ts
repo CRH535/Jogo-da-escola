@@ -47,16 +47,20 @@ export class NetworkRuntime {
   }
   get connected() { return this.manager.state === 'connected'; }
   get ended() { return this.latest?.combat?.match.state === 'MATCH_END'; }
+  get inLobby() { return this.latest?.lobby?.phase === 'LOBBY'; }
+  setReady(ready: boolean) { this.manager.setReady(ready); }
+  startMatch() { this.manager.lobbyAction('lobby:start'); }
+  returnToLobby() { this.manager.lobbyAction('lobby:return'); }
   get fighter() { return this.latest?.combat?.fighters.find((p) => p.id === this.manager.id); }
   get canMove() {
     const combat = this.latest?.combat;
-    return !combat || Boolean(this.fighter?.hp && ['WAITING', 'PLAYING'].includes(combat.match.state));
+    return !this.inLobby && (!combat || Boolean(this.fighter?.hp && ['WAITING', 'PLAYING'].includes(combat.match.state)));
   }
   private receive(snapshot: WorldSnapshot) {
     if (this.latest && snapshot.tick < this.latest.tick) return;
     this.latest = snapshot; this.incoming = snapshot; this.buffer.push(snapshot, performance.now());
     this.combat.receive(snapshot, this.manager.id);
-    if (this.ended && this.input.locked) this.input.release();
+    if ((this.ended || this.inLobby) && this.input.locked) this.input.release();
   }
   private synchronize() {
     if (!this.incoming) return;

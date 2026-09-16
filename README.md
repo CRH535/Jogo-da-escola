@@ -3,19 +3,19 @@
 FPS de arena futurista para navegador desktop, com partidas rapidas e efeitos
 digitais sem violencia grafica. Projeto em desenvolvimento incremental.
 
-**Estado atual: Etapa 10 - combate multiplayer LAN.** JOGAR inicia partida com 1-7 bots,
+**Estado atual: Etapa 11 - lobby e salas LAN.** JOGAR inicia partida com 1-7 bots,
 tres dificuldades, tres equipamentos, eliminacoes, respawn, feed e placar.
 TREINAMENTO com hologramas, exploracao livre, mapa, menus e backend preservados.
 Contagem inicial, limite de dez minutos/30 eliminacoes, resultado e revanche.
-MULTIPLAYER conecta ate oito jogadores a uma arena compartilhada, com movimento
+MULTIPLAYER conecta ate oito jogadores por sala, com movimento
 autoritativo, avatares, previsao, interpolacao, ping e retomada de conexao.
 Combate online possui tres equipamentos, vida, eliminacao, respawn, placar e
-partida FFA controlados pelo servidor. Lobby/salas (Etapa 11) ainda nao implementados.
+partida FFA controlados pelo servidor. Salas isoladas, HOST, PRONTO e inicio autorizado.
 
 JOGAR, MULTIPLAYER, TREINAMENTO, CONFIGURACOES, CREDITOS e SAIR abrem suas telas.
 O menu JOGAR salva nome, mapa, 1-7 bots e dificuldade e inicia a arena local.
-MULTIPLAYER permite informar nome/endereco e CONECTAR. CRIAR PARTIDA permanece
-desabilitado: ainda nao existem salas separadas, host de lobby ou estado PRONTO.
+MULTIPLAYER permite CRIAR PARTIDA ou ENTRAR EM PARTIDA por endereco/codigo.
+O servidor admite quatro salas simultaneas; sair como host encerra sua sala.
 
 ## Requisitos e instalacao
 
@@ -119,6 +119,12 @@ e seis build. Combate real entre dois clientes, respawn, placar, fim e nova roda
 Um teste interrompido por HMR passou na reexecucao isolada do bloco completo;
 detalhes e arquivos em [Etapa 10](docs/STAGE-10.md). Nao executar build de shared
 simultaneamente a testes do Vite, pois a recompilacao recarrega a cena em teste.
+
+Etapa 11 validada com **244 testes distintos**: 142 Node, 96 navegador em lotes
+(74 offline, 13 rede e nove lobby) e seis build. Inclui isolamento de salas,
+prontidao, host, reconexao, combate, retorno ao lobby e layouts ate 320 px.
+Correcoes, comandos e arquivos em [Etapa 11](docs/STAGE-11.md).
+O teste em dois computadores fisicos permanece pendente.
 
 ## Jogar o treinamento (Etapa 5)
 
@@ -255,9 +261,8 @@ Restaurar padroes pede confirmacao e mantem nome do jogador, mapa, bots e dificu
 
 ## Acesso pela rede local agora
 
-Menus, exploracao, treinamento e bots continuam locais. Em MULTIPLAYER, todos
-os clientes do mesmo servidor compartilham NEON FACILITY com movimento sincronizado.
-Esta e uma arena de movimentacao, ainda sem disparos, dano ou partida competitiva.
+Menus, exploracao, treinamento e bots continuam locais. MULTIPLAYER usa salas
+isoladas de NEON FACILITY com movimento, combate e partida FFA autoritativos.
 
 ### Host em desenvolvimento
 
@@ -266,15 +271,22 @@ Esta e uma arena de movimentacao, ainda sem disparos, dano ou partida competitiv
    Ignore adaptadores desconectados, VPNs e interfaces virtuais.
 3. No outro computador, abra `http://IP_DO_HOST:5173`.
 4. Confirme a cena e o indicador `Servidor online`.
-5. Nos dois computadores, abra MULTIPLAYER, informe nomes diferentes e mantenha
-   o endereco sugerido (`http://IP_DO_HOST:5173` no convidado).
-6. Clique CONECTAR, aguarde CONECTADO e clique ENTRAR NA ARENA em cada navegador.
-   Use WASD/mouse, Espaco e Shift. TAB mostra eliminacoes/derrotas/pontos/ping.
+5. No HOST, abra MULTIPLAYER > CRIAR PARTIDA. Preencha nome do jogador, nome da
+   sala, mapa, modo, limite 2-8 e Exigir jogadores prontos; CRIAR SERVIDOR/SALA.
+6. No lobby, COPIAR ENDERECO inclui a URL do backend e o codigo da sala.
+   Se houver varias interfaces, escolha a correspondente a rede Wi-Fi/Ethernet.
+7. No convidado, abra MULTIPLAYER > ENTRAR EM PARTIDA e cole esse endereco.
+   Ou mantenha `http://IP_DO_HOST:5173` e informe o codigo da sala separadamente.
+   Sem codigo, CONECTAR entra somente quando existe uma unica sala no servidor.
+8. O convidado marca PRONTO. O host inicia quando houver pelo menos dois
+   conectados e todos prontos (se exigido). ENTRAR NA ARENA captura o mouse.
+   WASD/mouse, Espaco, Shift, clique, R e 1/2/3; TAB abre o placar.
 
 O frontend encaminha `/api` e `/socket.io` (WebSocket) ao backend no host.
 Usando o endereco sugerido, apenas **TCP 5173** precisa estar acessivel ao cliente.
-Para informar `http://IP_DO_HOST:3000` diretamente no formulario ou acessar a
-API sem o proxy, permita tambem **TCP 3000**. Nao existe porta UDP adicional.
+O endereco copiado pelo lobby usa **TCP 3000**, que tambem precisa estar
+acessivel se for usado diretamente no formulario. Alternativa: frontend 5173
+mais codigo da sala, pelo proxy. Nao existe porta UDP adicional.
 Os processos escutam em `0.0.0.0`; isso inclui todas as interfaces IPv4.
 
 ### Host com build, um unico endereco
@@ -289,8 +301,8 @@ npm start
 No outro computador, abra **http://IP_DO_HOST:3000**. O Express entrega
 `client/dist`, `/api/health` e Socket.IO na mesma origem. Apenas **TCP 3000** e necessario.
 Frontend e backend continuam separados no codigo; Vite nao participa deste modo.
-Em ambos os computadores: MULTIPLAYER > nome > manter endereco sugerido >
-CONECTAR > ENTRAR NA ARENA. O HOST tambem deve abrir um navegador para jogar.
+No host: MULTIPLAYER > CRIAR PARTIDA; no convidado: ENTRAR EM PARTIDA > CONECTAR.
+Depois PRONTO > INICIAR PARTIDA > ENTRAR NA ARENA. O host tambem precisa de navegador.
 O botao do menu nao inicia um processo Node: `npm start` precisa estar rodando.
 
 O servidor imprime enderecos LAN candidatos na inicializacao. Confirme o IP
@@ -308,28 +320,31 @@ Nao e necessario abrir portas no roteador para uma LAN.
    corredores ou a passagem central para encontrar o outro avatar identificado.
 2. Um jogador anda, corre, pula e gira. O outro deve ver seu movimento e orientacao.
 3. Abra ESC em um cliente: MENU LOCAL. O outro continua andando; o servidor nao pausa.
-4. DESCONECTAR remove o jogador e libera a vaga imediatamente.
+4. DESCONECTAR/SAIR DA SALA remove o convidado. Se for o host, sua sala encerra
+   e os demais veem SALA ENCERRADA. Outras salas nao sao afetadas.
 5. Uma queda breve mostra CONEXAO PERDIDA / TENTANDO RECONECTAR. O servidor reserva
    o ID por dez segundos; a retomada exige novo clique em CONTINUAR, sem capturar
    o mouse automaticamente. Quatro tentativas falhas levam a SERVIDOR INDISPONIVEL.
 6. Encerrar Node perde todas as sessoes. Reinicie e conecte novamente pelo menu.
-   Fechar somente o navegador de quem iniciou Node nao encerra o servidor.
+   Fechar o navegador nao encerra Node. Se era o host da sala, a sala encerra
+   apos a deteccao da queda e a janela de retomada de dez segundos. Nao ha migracao.
 
 Se a conexao antiga ainda aguarda timeout no servidor, ha ate tres tentativas
 adicionais de retomada, espacadas em um segundo, sem criar outro jogador.
 
 O servidor rejeita versao incompatível, nome invalido, lotacao de oito jogadores,
 sequencias duplicadas, payloads invalidos e spam. Falha inicial de endereco/conexao
-mostra SERVIDOR NAO ENCONTRADO. Nao ha estado de partida ja iniciada sem lobby.
+mostra SERVIDOR NAO ENCONTRADO. Tambem informa SALA NAO ENCONTRADA, SALA CHEIA,
+PARTIDA JA INICIADA, VERSAO INCOMPATIVEL e limite global de salas.
 Nomes nao sao unicos nem autenticados; use somente rede privada confiavel.
 Credencial de retomada fica apenas em memoria e nunca em localStorage/URL.
 HTTP/WS nao criptografa o trafego LAN. Nao exponha esse servidor na Internet.
 
 ### Combate LAN (Etapa 10)
 
-1. Com um jogador, a arena aguarda adversario; e possivel explorar sem disparar.
-2. Ao conectar o segundo, o servidor inicia 3, 2, 1 e libera o FFA. Durante a
-   contagem, movimento/disparos ficam bloqueados. Clique em ENTRAR NA ARENA.
+1. Todos aguardam no lobby, sem movimento ou disparos. O host inicia a partida.
+2. O servidor inicia 3, 2, 1 e libera o FFA. Durante a contagem, movimento/disparos
+   ficam bloqueados. Clique em ENTRAR NA ARENA.
 3. Use clique esquerdo, R, 1/2/3 e mira secundaria do ARC-9. Municao, cadencia,
    dispersao, alcance, paredes e dano sao resolvidos pelo servidor, nao pelo HUD.
 4. Cada eliminacao vale 100 pontos. A vitima retorna em tres segundos, com vida
@@ -338,13 +353,14 @@ HTTP/WS nao criptografa o trafego LAN. Nao exponha esse servidor na Internet.
    menu local continua vulneravel; nao use a pausa como protecao.
 6. Dez minutos ou 30 eliminacoes encerram a partida. Os resultados sao comuns
    aos clientes, com posicao, precisao e tempo; o mouse e liberado.
-7. Apos 15 segundos o servidor inicia outra rodada se ainda houver dois jogadores.
-   Clique novamente em ENTRAR NA ARENA. Nenhum cliente pode reiniciar a partida
-   dos demais. Com menos de dois, volta a aguardar adversario.
+7. Ao terminar, VOLTAR AO LOBBY retorna a sala para todos; o servidor tambem faz
+   isso automaticamente apos 15 segundos. A prontidao e zerada e so o host pode
+   iniciar outra rodada. Nenhum cliente pode interromper uma partida em andamento.
 
-Ainda existe uma unica arena por servidor, sem host de sala, PRONTO ou bots online.
-Quem conecta durante uma rodada entra nela; durante o resultado, aguarda a proxima.
-Reconexao breve preserva vida, municao e pontuacao. O protocolo e versao 2:
+Existem ate quatro salas por servidor. Novas entradas sao recusadas durante a
+partida e o resultado; participantes ja registrados podem retomar uma queda breve.
+Reconexao preserva vida, municao e pontuacao, mas limpa a prontidao no lobby.
+Nao ha bots online. O protocolo e versao 3:
 cliente e servidor antigos precisam ser atualizados juntos.
 Disparos usam a posicao atual no servidor, sem rewind de latencia. Efeitos/sons
 sao confirmados pelo servidor, portanto o atraso fica perceptivel em conexoes lentas.
@@ -392,8 +408,8 @@ nao existem na sessao contra bots. O servidor HTTP nao simula os bots.
    VITORIA/DERROTA mostra posicao, eliminacoes, derrotas, pontuacao, precisao,
    tempo da partida e o placar de todos os participantes.
 5. JOGAR NOVAMENTE reutiliza mapa/bots/dificuldade com todos os estados zerados.
-   MENU PRINCIPAL encerra a sessao e libera os recursos. Nao ha botao de lobby
-   porque o lobby ainda nao existe.
+   MENU PRINCIPAL encerra a sessao e libera os recursos. Partidas offline nao
+   possuem lobby; VOLTAR AO LOBBY pertence ao multiplayer.
 
 Desempate: pontuacao, eliminacoes, menos derrotas e ID estavel, nessa ordem,
 igual ao TAB. Isso tambem decide partidas sem eliminacoes; nao ha prorrogacao.
@@ -461,14 +477,15 @@ interface e cenas; `server/test` cobre HTTP/rede e `shared/test` cobre contratos
 - [Registro da Etapa 8](docs/STAGE-8.md)
 - [Registro da Etapa 9](docs/STAGE-9.md)
 - [Registro da Etapa 10](docs/STAGE-10.md)
+- [Registro da Etapa 11](docs/STAGE-11.md)
 
 ## Problemas conhecidos
 
-- Partidas locais FFA e combate LAN implementados; Etapas 11-14 estao pendentes.
+- Partidas locais FFA, combate e lobby LAN implementados; Etapas 12-14 estao pendentes.
   Alvos estaticos do treinamento nao sao bots e o treinamento nao termina sozinho.
-- LAN possui uma arena por processo e oito vagas. Avatares nao
+- LAN possui ate quatro salas por processo e oito vagas por sala. Avatares nao
   bloqueiam fisicamente outros jogadores nesta etapa; colisoes com o mapa sao
-  autoritativas. Sem lobby, prontidao, host de sala, bots online ou chat.
+  autoritativas. Sem bots online, chat, senha ou autenticacao de nomes.
 - Interpolacao remota adiciona 100 ms; extrapolacao limitada a 33 ms. Latencia alta,
   quedas longas ou maquina sobrecarregada podem causar correcoes visiveis. Fila de
   inputs excessiva e recusada; nao ha promessa de desempenho WAN ou anti-cheat completo.

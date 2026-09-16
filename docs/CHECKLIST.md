@@ -2,7 +2,7 @@
 
 Uma etapa so recebe [x] depois da implementacao, execucao, testes e registro dos
 arquivos e limitacoes. A prioridade e jogabilidade, colisao e performance.
-Escopo atual autorizado: Etapa 10. Nao iniciar a Etapa 11 neste turno.
+Escopo atual autorizado: Etapa 11. Nao iniciar a Etapa 12 neste turno.
 
 - [x] 1. Fundacao: workspaces, dependencias, Vite/React/Three, Node/Express,
   scripts, health via proxy, build, teste de navegador e documentacao inicial.
@@ -26,7 +26,7 @@ Escopo atual autorizado: Etapa 10. Nao iniciar a Etapa 11 neste turno.
   previsao/reconciliacao, interpolacao, ping e reconexao. Sem combate ate passar.
 - [x] 10. Gameplay online: disparos, cadencia, municao, HP, raycast, eliminacao,
   respawn, placar, relogio e fim validados pelo servidor; testes de abuso.
-- [ ] 11. Lobby LAN: criar/entrar por endereco, nome/mapa/limite/modo,
+- [x] 11. Lobby LAN: criar/entrar por endereco, nome/mapa/limite/modo,
   HOST/PRONTO/ping, restricao de inicio, copiar endereco com fallback,
   sala cheia/iniciada/incompativel, saida do host/cliente e retomada limitada.
 - [ ] 12. Polimento: sons originais ou placeholders identificados, grupos de

@@ -162,9 +162,9 @@ test('fullscreen rejection gives feedback and tutorial replay can be scheduled',
   expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).preferences.gameplay.tutorialCompleted, key)).toBe(false);
 });
 
-test('LAN connection and local training are enabled while room creation remains unavailable', async ({ page }) => {
+test('LAN connection, room creation and local training are enabled', async ({ page }) => {
   await page.goto('/#multiplayer');
-  await expect(page.getByRole('button', { name: 'CRIAR PARTIDA' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'CRIAR PARTIDA' })).toBeEnabled();
   await expect(page.getByRole('button', { name: 'CONECTAR' })).toBeEnabled();
   await page.getByRole('button', { name: 'Voltar ao menu', exact: true }).click();
   await page.getByRole('button', { name: 'TREINAMENTO', exact: true }).click();

@@ -4,7 +4,7 @@ import { formatDuration } from '@neon-strike/shared/hud';
 import { ScoreTable } from '../hud/Scoreboard';
 import './match.css';
 
-export function MatchResults({ result, onAgain, onMenu, nextRoundSeconds }: { result: Readonly<MatchResult>; onAgain: () => void; onMenu: () => void; nextRoundSeconds?: number | undefined }) {
+export function MatchResults({ result, onAgain, onMenu, nextRoundSeconds, onLobby }: { result: Readonly<MatchResult>; onAgain: () => void; onMenu: () => void; nextRoundSeconds?: number | undefined; onLobby?: () => void }) {
   const position = result.players.findIndex((row) => row.local);
   const player = result.players[position] ?? { id: '', eliminations: 0, deaths: 0, score: 0, hits: 0, projectiles: 0 };
   const won = result.winnerId === player.id;
@@ -22,7 +22,7 @@ export function MatchResults({ result, onAgain, onMenu, nextRoundSeconds }: { re
     </dl>
     <ScoreTable players={result.players} mode={nextRoundSeconds === undefined ? 'bots' : 'network'} />
     <div className="match-actions">
-      <button className="button primary" autoFocus disabled={nextRoundSeconds !== undefined} onClick={onAgain}><RotateCcw aria-hidden="true" />{nextRoundSeconds === undefined ? 'JOGAR NOVAMENTE' : `PRÓXIMA PARTIDA: ${nextRoundSeconds}`}</button>
+      <button className="button primary" autoFocus disabled={!onLobby && nextRoundSeconds !== undefined} onClick={onLobby ?? onAgain}><RotateCcw aria-hidden="true" />{onLobby ? 'VOLTAR AO LOBBY' : nextRoundSeconds === undefined ? 'JOGAR NOVAMENTE' : `PRÓXIMA PARTIDA: ${nextRoundSeconds}`}</button>
       <button className="button secondary" onClick={onMenu}><LogOut aria-hidden="true" />MENU PRINCIPAL</button>
     </div>
   </section>;

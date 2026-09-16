@@ -24,7 +24,7 @@ export class CombatArena extends MovementArena {
   private feedId = 0;
   private visibility: Visibility;
   private ray = new PhysicsRay({ x: 0, y: 0, z: 0 }, { x: 0, y: 0, z: -1 });
-  constructor(physics: MapWorld, private rules: Readonly<MatchRules> = FFA_RULES, private random = Math.random) {
+  constructor(physics: MapWorld, private rules: Readonly<MatchRules> = FFA_RULES, private random = Math.random, readonly lobbyControlled = false) {
     super(physics); this.visibility = new Visibility(physics.world);
     this.rules = new MatchManager(rules).rules;
   }
@@ -45,21 +45,30 @@ export class CombatArena extends MovementArena {
     return player;
   }
   override remove(player: Participant) { this.fighters.delete(player.id); this.inputs.delete(player.id); super.remove(player); }
+  startMatch() {
+    if (this.match) return false;
+    this.resetFighters(); this.match = new MatchManager(this.rules); this.roundId++; this.intermission = 0;
+    console.info(`[GAME] Online match ${this.roundId} started`); return true;
+  }
+  returnToLobby() {
+    this.match = null; this.intermission = 0; this.resetFighters();
+    for (const player of this.players.values()) this.setActive(player, false);
+  }
   protected override beforeTick() {
     this.inputs.clear();
     while (this.events[0] && this.events[0].tick < this.tick - 120) this.events.shift();
     while (this.feed[0] && this.feed[0].expiresAtTick <= this.tick) this.feed.shift();
     if (!this.players.size) { this.match = null; this.intermission = 0; this.feed.length = 0; this.events.length = 0; return; }
+    if (this.lobbyControlled) return;
     const connected = [...this.players.values()].filter((p) => p.connected).length;
     if (this.match?.ended && ++this.intermission >= INTERMISSION_TICKS) { this.match = null; if (connected < 2) this.resetFighters(); }
     if (!this.match && connected >= 2) {
-      this.resetFighters(); this.match = new MatchManager(this.rules); this.roundId++; this.intermission = 0;
-      console.info(`[GAME] Online match ${this.roundId} started`);
+      this.startMatch();
     }
   }
   protected override canMove(player: Participant, command?: PlayerCommand) {
     const fighter = this.fighters.get(player.id)!;
-    return fighter.life.alive && (!this.match || this.match.playing) && (!command?.combat || command.combat.lifeId === fighter.lifeId);
+    return fighter.life.alive && (this.match ? this.match.playing : !this.lobbyControlled) && (!command?.combat || command.combat.lifeId === fighter.lifeId);
   }
   protected override commandReceived(player: Participant, command?: PlayerCommand) {
     const fighter = this.fighters.get(player.id)!;

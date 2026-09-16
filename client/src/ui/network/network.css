@@ -5,6 +5,28 @@
 .network-form { max-width: 640px; width: 100%; }
 .network-form .action-row { margin-top: 24px; }
 .network-form input { min-width: 0; }
+.network-modes { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+.network-modes [aria-pressed="true"] { border-color: #78e2c2; color: #a7f5df; }
+.room-ready-option { display: flex; align-items: center; gap: 10px; padding-top: 18px; }
+.room-ready-option input { accent-color: #78e2c2; }
+.lobby-screen { width: 100%; }
+.fps-overlay.fps-lobby { width: min(680px, calc(100% - 32px)); }
+.lobby-screen h2 { overflow-wrap: anywhere; }
+.lobby-meta, .lobby-wait { color: #efd48d; font: 11px/1.5 monospace; margin-top: 12px; }
+.lobby-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin: 18px 0; font: 12px/1.5 monospace; }
+.lobby-table th, .lobby-table td { text-align: left; padding: 10px 6px; border-bottom: 1px solid #3c5047; overflow-wrap: anywhere; }
+.lobby-table th:first-child { width: 48%; }
+.lobby-table th:last-child, .lobby-table td:last-child { width: 18%; text-align: right; }
+.lobby-table small { display: block; color: #efd48d; font-size: 10px; }
+.lobby-table tr[data-local="true"] { background: #85dab915; }
+.lobby-address { display: grid; gap: 8px; font-size: 12px; }
+.lobby-address > div { display: flex; gap: 8px; }
+.lobby-address input, .lobby-address select { min-width: 0; width: 100%; border: 1px solid #62776d; background: #101918; color: #edf9f3; padding: 10px; border-radius: 4px; }
+.lobby-address label select { display: block; margin-top: 6px; }
+.lobby-address .button { flex-shrink: 0; padding: 10px; }
+.lobby-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+.lobby-actions .button { flex: 1 1 180px; }
+@media (max-width: 480px) { .lobby-table { font-size: 10px; } .lobby-table th, .lobby-table td { padding: 8px 3px; } }
 .network-board th:first-child { width: 45%; }
 .network-readout[data-combat="true"] .network-summary { top: 66px; right: 18px; left: auto; transform: none; padding: 6px; gap: 12px; }
 @media (max-width: 800px) { .network-summary { top: 55px; } }

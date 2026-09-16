@@ -23,7 +23,7 @@ const rendererLabels = {
   loading: 'Inicializando 3D...', ready: 'Renderização ativa', failed: '3D indisponível',
 };
 
-export function App() {
+export function App({ rooms = true }: { rooms?: boolean }) {
   const [rendererStatus, setRendererStatus] = useState<RendererStatus>('loading');
   const [network, setNetwork] = useState<NetworkOptions | null>(null);
   const serverStatus = useServerStatus();
@@ -49,7 +49,7 @@ export function App() {
       {screen === 'menu' && <MainMenu navigate={navigate} />}
       {screen === 'play' && <PlayScreen preferences={preferences} update={update} onBack={onBack} onMap={() => navigate('map')} onExplore={() => navigate('arena')} onStart={() => navigate('bots')} />}
       {screen === 'settings' && <SettingsScreen preferences={preferences} update={update} saved={saved} resetSettings={resetSettings} onBack={onBack} />}
-      {(screen === 'multiplayer' || screen === 'lan') && <MultiplayerScreen preferences={preferences} update={update} onBack={onBack}
+      {(screen === 'multiplayer' || screen === 'lan') && <MultiplayerScreen preferences={preferences} update={update} onBack={onBack} rooms={rooms}
         onConnect={(options) => { setNetwork(options); navigate('lan'); }} />}
       {screen === 'training' && <TrainingScreen onBack={onBack} onStart={() => navigate('range')} />}
       {screen === 'credits' && <CreditsScreen onBack={onBack} />}

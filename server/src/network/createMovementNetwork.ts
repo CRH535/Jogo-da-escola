@@ -7,6 +7,7 @@ import type { MatchRules } from '@neon-strike/shared/match';
 import { NETWORK_VERSION, validInput, validName, type ClientEvents, type NetworkError, type ServerEvents } from '@neon-strike/shared/network';
 import { CombatArena } from '../game/CombatArena.js';
 import { RateLimit } from './RateLimit.js';
+import { createRoomNetwork } from './createRoomNetwork.js';
 
 export async function createMovementNetwork(http: HttpServer, rules?: Readonly<MatchRules>) {
   const arena = new CombatArena(await createMapWorld(NEON_FACILITY), rules);
@@ -15,6 +16,7 @@ export async function createMovementNetwork(http: HttpServer, rules?: Readonly<M
     perMessageDeflate: false, serveClient: false,
   });
   const handshakes = new Map<string, RateLimit>();
+  const rooms = createRoomNetwork(io, http, rules);
   io.use((socket, next) => {
     const ip = socket.handshake.address;
     if (!handshakes.has(ip)) {
@@ -62,6 +64,9 @@ export async function createMovementNetwork(http: HttpServer, rules?: Readonly<M
     const now = performance.now();
     clock.advance((now - last) / 1000, () => {
       arena.step(now);
+      rooms.step(now);
+      if (arena.tick % 3 === 0) rooms.broadcast();
+      if (arena.tick % 60 === 0) rooms.probe();
       if (arena.tick % 3 === 0 && arena.players.size) io.volatile.emit('world:state', arena.snapshot());
       if (arena.tick % 60 === 0) for (const socket of io.sockets.sockets.values()) {
         const player = arena.players.get(socket.data.playerId as string);
@@ -75,9 +80,11 @@ export async function createMovementNetwork(http: HttpServer, rules?: Readonly<M
   let timer = setTimeout(loop, 8); timer.unref();
   return {
     arena,
+    rooms: rooms.registry,
     async close() {
       if (closed) return;
       closed = true; clearTimeout(timer);
+      rooms.dispose();
       await new Promise<void>((resolve) => io.close(() => resolve()));
       arena.dispose(); handshakes.clear();
     },

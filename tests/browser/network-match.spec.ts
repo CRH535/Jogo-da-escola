@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { createMovementNetwork } from '../../server/src/network/createMovementNetwork';
+import { networkUrl } from '../fixtures/networkUrl';
 
 test('server time ends both clients, releases pointer lock and begins the next round without a client restart', async ({ page, browser }, info) => {
   test.setTimeout(60000);
@@ -14,7 +15,7 @@ test('server time ends both clients, releases pointer lock and begins the next r
   const errors: string[] = []; for (const p of [page, other]) p.on('pageerror', (e) => errors.push(e.message));
   try {
     for (const [p, name] of [[page, 'Chris'], [other, 'Lucas']] as const) {
-      await p.goto('/#multiplayer'); await p.getByLabel('Nome do jogador').fill(name);
+      await p.goto(networkUrl()); await p.getByLabel('Nome do jogador').fill(name);
       await p.getByLabel('Endereço do servidor').fill(`http://127.0.0.1:${address.port}`);
       await p.getByRole('button', { name: 'CONECTAR', exact: true }).click();
       await expect(p.getByLabel('Estado da rede')).toHaveAttribute('data-state', 'connected', { timeout: 20000 });

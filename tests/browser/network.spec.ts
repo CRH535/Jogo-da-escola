@@ -1,12 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import { PNG } from 'pngjs';
 import type { NetworkPlayer } from '../../shared/src/network/protocol';
+import { networkUrl } from '../fixtures/networkUrl';
 
 const readout = (page: Page) => page.getByLabel('Estado da rede');
 const cursors = new WeakMap<Page, { x: number; y: number }>();
 async function roster(page: Page): Promise<NetworkPlayer[]> { return JSON.parse(await readout(page).getAttribute('data-players') ?? '[]'); }
 async function join(page: Page, name: string, address?: string) {
-  await page.goto('/#multiplayer'); await page.getByLabel('Nome do jogador').fill(name);
+  await page.goto(networkUrl()); await page.getByLabel('Nome do jogador').fill(name);
   if (address) await page.getByLabel('Endereço do servidor').fill(address);
   await page.getByRole('button', { name: 'CONECTAR', exact: true }).click();
   await expect(readout(page)).toHaveAttribute('data-state', 'connected', { timeout: 20000 });
@@ -231,12 +232,12 @@ test('brief transport loss resumes the same identity without automatic pointer l
   await enter(page); const x = await position(page, 'x'); await page.keyboard.down('w');
   await expect.poll(() => position(page, 'x')).toBeGreaterThan(x + 0.5); await page.keyboard.up('w');
   await page.keyboard.press('Escape'); await page.getByRole('button', { name: 'DESCONECTAR' }).click();
-  await page.goto('/#lan'); await expect(page.getByRole('button', { name: 'CONECTAR', exact: true })).toBeVisible();
+  await page.goto(networkUrl('lan')); await expect(page.getByRole('button', { name: 'CONECTAR', exact: true })).toBeVisible();
 });
 
 test('invalid addresses stay in the form and an absent server ends bounded reconnect attempts', async ({ page }) => {
   test.setTimeout(40000);
-  await page.goto('/#multiplayer'); await page.getByLabel('Endereço do servidor').fill('file:///tmp');
+  await page.goto(networkUrl()); await page.getByLabel('Endereço do servidor').fill('file:///tmp');
   await page.getByRole('button', { name: 'CONECTAR', exact: true }).click(); await expect(page.getByRole('alert')).toContainText('Endereço inválido');
   await page.getByLabel('Endereço do servidor').fill('http://127.0.0.1:3999');
   await page.getByRole('button', { name: 'CONECTAR', exact: true }).click();
@@ -255,7 +256,7 @@ test('incompatible protocol is reported by the real server before arena entry', 
       } else server.send(message);
     });
   });
-  await page.goto('/#multiplayer'); await page.getByRole('button', { name: 'CONECTAR', exact: true }).click();
+  await page.goto(networkUrl()); await page.getByRole('button', { name: 'CONECTAR', exact: true }).click();
   await expect(readout(page)).toHaveAttribute('data-state', 'incompatible', { timeout: 20000 });
   await expect(page.locator('.network-status')).toHaveText('VERSÃO INCOMPATÍVEL');
   await expect(page.locator('[data-player-resume]')).toBeDisabled();
@@ -273,7 +274,7 @@ test('repeated LAN sessions close old sockets and release old WebGL contexts', a
   });
   let sockets = 0;
   page.on('websocket', (socket) => { if (!socket.url().includes('/socket.io/')) return; sockets++; socket.on('close', () => sockets--); });
-  await page.goto('/#multiplayer');
+  await page.goto(networkUrl());
   const ids = new Set<string>();
   for (let round = 0; round < 3; round++) {
     await page.getByRole('button', { name: 'CONECTAR', exact: true }).click();

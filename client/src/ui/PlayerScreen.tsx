@@ -11,14 +11,15 @@ import type { MatchRules } from '@neon-strike/shared/match';
 import { MatchResults } from './match/MatchResults';
 import type { NetworkOptions, NetworkReadout as NetworkState } from '../network/NetworkManager';
 import { NetworkReadout } from './network/NetworkReadout';
+import { LobbyScreen } from './network/LobbyScreen';
 import './hud/hud.css';
 import '../game/player/player.css';
 
 type Status = 'loading' | 'ready' | 'playing' | 'paused' | 'ended' | 'failed';
-function Overlay({ children, settings, results, onCancel }: { children: ReactNode; settings: boolean; results?: boolean; onCancel: () => void }) {
+function Overlay({ children, settings, results, lobby, onCancel }: { children: ReactNode; settings: boolean; results?: boolean; lobby?: boolean; onCancel: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => { dialog.current?.showModal(); }, []);
-  return <dialog ref={dialog} className={`fps-overlay ${settings ? 'fps-settings' : results ? 'fps-results' : ''}`}
+  return <dialog ref={dialog} className={`fps-overlay ${settings ? 'fps-settings' : lobby ? 'fps-lobby' : results ? 'fps-results' : ''}`}
     aria-label={settings ? 'Configurações da arena' : results ? 'Fim da partida' : 'Menu da arena'} onCancel={(event) => {
       if (event.target !== event.currentTarget) return;
       event.preventDefault(); onCancel();
@@ -69,7 +70,11 @@ export function PlayerScreen({ settings, onBack, onMenu, training = false, bots 
           else if (network) setStatus((previous) => previous === 'ended' ? 'ready' : previous);
         },
         onScoreboard: (open) => { if (active) setScoreboardOpen(open); },
-        onNetwork: (next) => { if (active) setNetworkState(next); },
+        onNetwork: (next) => {
+          if (!active) return;
+          setNetworkState(next);
+          if (next.snapshot?.lobby?.phase === 'LOBBY') { started.current = false; setStatus((previous) => previous === 'failed' ? previous : 'ready'); setShowSettings(false); setScoreboardOpen(false); }
+        },
       }, training, bots ? { count: preferencesRef.current.match.bots, difficulty: preferencesRef.current.match.difficulty } : undefined, rules, network);
       setStatus('ready');
     }
@@ -86,6 +91,7 @@ export function PlayerScreen({ settings, onBack, onMenu, training = false, bots 
   function resume() { setInputError(''); scene.current?.resume(); }
 
   const modeLabel = network ? 'FREE FOR ALL LAN' : bots ? 'COMBATE CONTRA BOTS' : training ? 'TREINAMENTO' : 'EXPLORAÇÃO LIVRE';
+  const lobby = status === 'failed' ? undefined : networkState?.snapshot?.lobby;
   return <main className="fps-screen" data-player-status={status} data-training={training} data-bots={bots} data-network={Boolean(network)}>
     <div ref={container} className="fps-viewport" />
     <div className="fps-chrome">
@@ -102,8 +108,10 @@ export function PlayerScreen({ settings, onBack, onMenu, training = false, bots 
         {bots && <span>BOTS {debug.bots.length} / ATACANDO {debug.bots.filter((bot) => bot.state === 'ATTACK').length} / RESPAWN {debug.bots.filter((bot) => bot.state === 'RESPAWN').length}</span>}
       </output>}
     </div>
-    {status !== 'playing' && <Overlay settings={showSettings} results={status === 'ended'} onCancel={() => { if (showSettings) setShowSettings(false); else if (!started.current) onBack(); }}>
-      {status === 'ended' && combat?.match?.result ? <MatchResults result={combat.match.result} nextRoundSeconds={network ? combat.nextRoundSeconds : undefined} onMenu={onMenu} onAgain={() => {
+    {status !== 'playing' && <Overlay settings={showSettings} lobby={lobby?.phase === 'LOBBY'} results={status === 'ended'} onCancel={() => { if (showSettings) setShowSettings(false); else if (!started.current) onBack(); }}>
+      {status === 'ended' && networkState && networkState.state !== 'connected' && <p className="network-status" role="alert">{networkState.message}</p>}
+      {lobby?.phase === 'LOBBY' && networkState ? <LobbyScreen lobby={lobby} state={networkState} onReady={(ready) => scene.current?.setReady(ready)} onStart={() => scene.current?.startMatch()} onLeave={networkState.state === 'connected' ? onBack : onMenu} /> : status === 'ended' && combat?.match?.result ? <MatchResults result={combat.match.result} nextRoundSeconds={network ? combat.nextRoundSeconds : undefined}
+        {...(lobby ? { onLobby: () => scene.current?.returnToLobby() } : {})} onMenu={onMenu} onAgain={() => {
         started.current = false; setStatus('ready'); scene.current?.restart(); resume();
       }} /> : showSettings ? <SettingsScreen {...settings} onBack={() => setShowSettings(false)} /> : <>
         <p className="eyebrow">NEON STRIKE / {modeLabel}</p>

@@ -168,7 +168,10 @@ export function createPlayerScene(container: HTMLElement, physics: MapWorld, ini
   renderer.domElement.addEventListener('webglcontextlost', contextLost);
   resize(); updateCamera(0); renderer.render(environment.scene, camera); visibilityChanged();
   return {
-    resume: () => { if (!failed && !training?.ended && !network?.ended && (!network || network.connected)) { training?.unlockAudio(); networkCombat?.unlockAudio(); input.request(); } },
+    resume: () => { if (!failed && !training?.ended && !network?.ended && !network?.inLobby && (!network || network.connected)) { training?.unlockAudio(); networkCombat?.unlockAudio(); input.request(); } },
+    setReady: (ready: boolean) => network?.setReady(ready),
+    startMatch: () => network?.startMatch(),
+    returnToLobby: () => network?.returnToLobby(),
     pause: input.release,
     restart() { if (network) return; input.clear(); player.reset(); training?.reset(); input.yaw = spawn.yaw; input.pitch = 0; bobAmount = 0; bobPhase = 0; clock.reset(); step(false); step(false); updateCamera(0); },
     setPreferences(next: Preferences) { preferences = next; input.sensitivity = next.controls.sensitivity; training?.setPreferences(next); networkCombat?.setPreferences(next); resize(); },
